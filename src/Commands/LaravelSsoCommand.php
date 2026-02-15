@@ -1,12 +1,12 @@
 <?php
 
-namespace VendorName\Skeleton\Commands;
+namespace CreativeCrafts\LaravelSso\Commands;
 
 use Illuminate\Console\Command;
 
-class SkeletonCommand extends Command
+class LaravelSsoCommand extends Command
 {
-    public $signature = 'skeleton';
+    public $signature = 'laravel-sso';
 
     public $description = 'My command';
 
