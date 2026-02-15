@@ -2,9 +2,9 @@
 
 namespace CreativeCrafts\LaravelSso\Tests;
 
+use CreativeCrafts\LaravelSso\LaravelSsoServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use CreativeCrafts\LaravelSso\LaravelSsoServiceProvider;
 
 class TestCase extends Orchestra
 {

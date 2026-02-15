@@ -2,9 +2,9 @@
 
 namespace CreativeCrafts\LaravelSso;
 
+use CreativeCrafts\LaravelSso\Commands\LaravelSsoCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use CreativeCrafts\LaravelSso\Commands\LaravelSsoCommand;
 
 class LaravelSsoServiceProvider extends PackageServiceProvider
 {
