@@ -4,22 +4,29 @@ namespace CreativeCrafts\LaravelSso;
 
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
-use CreativeCrafts\LaravelSso\Commands\LaravelSsoCommand;
 
-class LaravelSsoServiceProvider extends PackageServiceProvider
+final class LaravelSsoServiceProvider extends PackageServiceProvider
 {
     public function configurePackage(Package $package): void
     {
-        /*
-         * This class is a Package Service Provider
-         *
-         * More info: https://github.com/spatie/laravel-package-tools
-         */
         $package
-            ->name('laravel-sso')
-            ->hasConfigFile()
-            ->hasViews()
-            ->hasMigration('create_laravel_sso_table')
-            ->hasCommand(LaravelSsoCommand::class);
+          ->name('laravel-sso')
+          ->hasConfigFile('sso')
+          ->hasMigration('create_sso_tables');
+    }
+
+    public function packageBooted(): void
+    {
+        if (config('sso.routes.enabled', true)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/sso.php');
+        }
+
+        if (config('sso.ui.enabled', false)) {
+            $this->loadRoutesFrom(__DIR__ . '/../routes/admin.php');
+
+            // $this->publishes([
+            //     __DIR__ . '/../resources/ui' => resource_path('js/vendor/creativecrafts/laravel-sso'),
+            // ], 'sso-ui');
+        }
     }
 }
