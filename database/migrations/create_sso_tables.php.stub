@@ -1,0 +1,155 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('sso_tenants', function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->ulid('ulid')->unique();
+
+            $table->string('name')->nullable();
+            $table->json('metadata')->nullable();
+
+            $table->timestamps();
+        });
+
+        Schema::create('sso_identity_providers', function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('tenant_id');
+
+            $table->string('name');
+            $table->string('protocol', 20);
+            $table->boolean('enabled')->default(true);
+            $table->json('config')->nullable();
+
+            $table->timestamps();
+
+            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
+
+            $table->index(['tenant_id', 'protocol']);
+            $table->unique(['tenant_id', 'name']);
+        });
+
+        Schema::create('sso_connections', function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('tenant_id');
+            $table->unsignedBigInteger('identity_provider_id');
+
+            $table->string('name');
+            $table->boolean('enabled')->default(true);
+
+            $table->string('guard')->nullable();
+            $table->json('settings')->nullable();
+
+            $table->timestamps();
+
+            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
+            $table->foreign('identity_provider_id')->references('id')->on('sso_identity_providers')->cascadeOnDelete();
+
+            $table->unique(['tenant_id', 'name']);
+            $table->index(['tenant_id', 'identity_provider_id']);
+        });
+
+        Schema::create('sso_auth_attempts', function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('tenant_id');
+            $table->unsignedBigInteger('connection_id')->nullable();
+            $table->unsignedBigInteger('identity_provider_id')->nullable();
+
+            $table->string('protocol', 20);
+            $table->string('state', 128);
+            $table->string('nonce', 128)->nullable();
+
+            $table->text('code_verifier')->nullable();
+            $table->string('redirect_to')->nullable();
+
+            $table->timestamp('expires_at');
+            $table->timestamp('consumed_at')->nullable();
+
+            $table->string('ip', 45)->nullable();
+            $table->text('user_agent')->nullable();
+
+            $table->json('context')->nullable();
+
+            $table->timestamps();
+
+            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
+            $table->foreign('connection_id')->references('id')->on('sso_connections')->nullOnDelete();
+            $table->foreign('identity_provider_id')->references('id')->on('sso_identity_providers')->nullOnDelete();
+
+            $table->unique(['tenant_id', 'state']);
+            $table->index(['tenant_id', 'expires_at']);
+            $table->index(['tenant_id', 'consumed_at']);
+        });
+
+        Schema::create('sso_external_identities', function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('tenant_id');
+            $table->unsignedBigInteger('identity_provider_id');
+
+            $table->string('provider_subject', 255);
+
+            $table->string('email')->nullable();
+
+            $table->string('authenticatable_type');
+            $table->string('authenticatable_id', 64);
+
+            $table->json('attributes')->nullable();
+            $table->timestamp('last_login_at')->nullable();
+
+            $table->timestamps();
+
+            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
+            $table->foreign('identity_provider_id')->references('id')->on('sso_identity_providers')->cascadeOnDelete();
+
+            $table->unique(['tenant_id', 'identity_provider_id', 'provider_subject'], 'sso_extid_unique_subject');
+            $table->index(['tenant_id', 'email']);
+            $table->index(['tenant_id', 'authenticatable_type', 'authenticatable_id'], 'sso_extid_authenticatable_idx');
+        });
+
+        Schema::create('sso_audit_logs', function (Blueprint $table): void {
+            $table->bigIncrements('id');
+            $table->unsignedBigInteger('tenant_id');
+
+            $table->unsignedBigInteger('identity_provider_id')->nullable();
+            $table->unsignedBigInteger('connection_id')->nullable();
+            $table->unsignedBigInteger('auth_attempt_id')->nullable();
+
+            $table->string('event', 100);
+            $table->string('level', 20)->default('info');
+
+            $table->string('ip', 45)->nullable();
+            $table->text('user_agent')->nullable();
+
+            $table->json('context')->nullable();
+            $table->timestamp('occurred_at');
+
+            $table->timestamps();
+
+            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
+            $table->foreign('identity_provider_id')->references('id')->on('sso_identity_providers')->nullOnDelete();
+            $table->foreign('connection_id')->references('id')->on('sso_connections')->nullOnDelete();
+            $table->foreign('auth_attempt_id')->references('id')->on('sso_auth_attempts')->nullOnDelete();
+
+            $table->index(['tenant_id', 'occurred_at']);
+            $table->index(['tenant_id', 'event']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('sso_audit_logs');
+        Schema::dropIfExists('sso_external_identities');
+        Schema::dropIfExists('sso_auth_attempts');
+        Schema::dropIfExists('sso_connections');
+        Schema::dropIfExists('sso_identity_providers');
+        Schema::dropIfExists('sso_tenants');
+    }
+};
