@@ -19,7 +19,10 @@ abstract class TestCase extends Orchestra
             fn (string $modelName): string => 'CreativeCrafts\\LaravelSso\\Database\\Factories\\' . class_basename($modelName) . 'Factory',
         );
 
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->artisan('vendor:publish', [
+          '--tag' => 'sso-migrations',
+          '--force' => true,
+        ])->run();
 
         $this->artisan('migrate', ['--database' => 'testing'])->run();
     }
@@ -35,9 +38,6 @@ abstract class TestCase extends Orchestra
         ];
     }
 
-    /**
-     * @param Application $app
-     */
     protected function defineEnvironment($app): void
     {
         $app['config']->set('database.default', 'testing');
