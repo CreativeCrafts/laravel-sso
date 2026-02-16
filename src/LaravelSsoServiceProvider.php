@@ -2,6 +2,7 @@
 
 namespace CreativeCrafts\LaravelSso;
 
+use CreativeCrafts\LaravelSso\Commands\LaravelSsoCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
