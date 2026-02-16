@@ -10,13 +10,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
+  checks:
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       matrix:
-        php: [ "8.2", "8.3", "8.4" ]
+        php: [ "8.3", "8.4" ]
 
     steps:
       - name: Checkout
@@ -52,20 +51,44 @@ jobs:
         run: composer audit --no-interaction
 
       - name: Coding style (Pint)
-        run: |
-          if [ -f vendor/bin/pint ]; then
-            vendor/bin/pint --test
-          else
-            echo "Pint not installed; skipping."
-          fi
+        run: vendor/bin/pint --test
 
-      - name: Static analysis (PHPStan)
-        run: |
-          if [ -f vendor/bin/phpstan ]; then
-            vendor/bin/phpstan analyse
-          else
-            echo "PHPStan not installed; skipping."
-          fi
+      - name: Static analysis (PHPStan/Larastan)
+        run: vendor/bin/phpstan analyse
 
       - name: Tests (Pest)
         run: vendor/bin/pest
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: checks
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP (coverage)
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer:v2
+          coverage: pcov
+          extensions: mbstring, dom, sqlite, pdo_sqlite
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-php-8.3-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-php-8.3-composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Coverage (Pest)
+        run: vendor/bin/pest --coverage --coverage-text

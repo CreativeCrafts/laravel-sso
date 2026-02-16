@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CreativeCrafts\LaravelSso;
 
-use CreativeCrafts\LaravelSso\Commands\LaravelSsoCommand;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 

@@ -7,11 +7,7 @@ body:
     id: priority
     attributes:
       label: Priority
-      options:
-        - P0
-        - P1
-        - P2
-        - P3
+      options: [ P0, P1, P2, P3 ]
     validations:
       required: true
 
@@ -27,7 +23,7 @@ body:
     id: impact
     attributes:
       label: Impact
-      description: What could go wrong? (replay, open redirect, token leak, privilege escalation, etc.)
+      description: Replay, open redirect, token leak, privilege escalation, etc.
     validations:
       required: true
 
@@ -35,7 +31,7 @@ body:
     id: mitigation
     attributes:
       label: Proposed mitigation
-      description: The intended fix and any trade-offs.
+      description: Intended fix and trade-offs.
     validations:
       required: true
 

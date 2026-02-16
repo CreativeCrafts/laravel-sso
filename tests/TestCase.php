@@ -16,7 +16,7 @@ abstract class TestCase extends Orchestra
         parent::setUp();
 
         Factory::guessFactoryNamesUsing(
-          fn(string $modelName): string => 'CreativeCrafts\\LaravelSso\\Database\\Factories\\' . class_basename($modelName) . 'Factory',
+            fn (string $modelName): string => 'CreativeCrafts\\LaravelSso\\Database\\Factories\\' . class_basename($modelName) . 'Factory',
         );
 
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');

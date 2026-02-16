@@ -1,5 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CreativeCrafts\LaravelSso;
 
-class LaravelSso {}
+class LaravelSso
+{
+}

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace CreativeCrafts\LaravelSso\Facades;
 
 use Illuminate\Support\Facades\Facade;
