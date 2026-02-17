@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso;
 
+use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
+use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
+use CreativeCrafts\LaravelSso\Repositories\EloquentIdentityProviderRepository;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -15,6 +19,12 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
           ->name('laravel-sso')
           ->hasConfigFile('sso')
           ->hasMigration('create_sso_tables');
+    }
+
+    public function registeringPackage(): void
+    {
+        $this->app->singleton(IdentityProviderRepository::class, EloquentIdentityProviderRepository::class);
+        $this->app->singleton(ConnectionRepository::class, EloquentConnectionRepository::class);
     }
 
     public function packageBooted(): void
