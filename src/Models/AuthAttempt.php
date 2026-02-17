@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property CarbonInterface $expires_at
+ * @property CarbonInterface|null $consumed_at
+ */
 final class AuthAttempt extends Model
 {
     protected $table = 'sso_auth_attempts';
