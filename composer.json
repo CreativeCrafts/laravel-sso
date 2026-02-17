@@ -1,29 +1,31 @@
 {
   "name": "creativecrafts/laravel-sso",
-  "description": "Generic OIDC and SAML 2.0 SSO for Laravel, with multi-tenant support, user provisioning, and identity linking.",
+  "description": "Multi-tenant SSO package for Laravel supporting OIDC and SAML 2.0 with provisioning, multiple guards, and optional Inertia admin UI.",
   "keywords": [
-    "CreativeCrafts",
     "laravel",
-    "laravel-sso",
-    "OIDC",
-    "SAML 2.0",
-    "SSO",
-    "Single sign-on"
+    "sso",
+    "oidc",
+    "openid-connect",
+    "saml",
+    "saml2",
+    "authentication",
+    "provisioning",
+    "multi-tenant"
   ],
   "homepage": "https://github.com/creativecrafts/laravel-sso",
   "license": "MIT",
   "authors": [
     {
       "name": "Godspower Oduose",
-      "email": "creativecraftssolutions@gmail.com",
-      "role": "Developer"
+      "email": "creativecraftssolutions@gmail.com"
     }
   ],
   "require": {
     "php": "^8.3",
-    "spatie/laravel-package-tools": "^1.92",
     "illuminate/contracts": "^12.0",
-    "illuminate/support": "^12.0"
+    "illuminate/database": "^12.0",
+    "illuminate/support": "^12.0",
+    "spatie/laravel-package-tools": "^1.16"
   },
   "require-dev": {
     "laravel/pint": "^1.14",
@@ -40,14 +42,12 @@
   },
   "autoload": {
     "psr-4": {
-      "CreativeCrafts\\LaravelSso\\": "src/",
-      "CreativeCrafts\\LaravelSso\\Database\\Factories\\": "database/factories/"
+      "CreativeCrafts\\LaravelSso\\": "src/"
     }
   },
   "autoload-dev": {
     "psr-4": {
-      "CreativeCrafts\\LaravelSso\\Tests\\": "tests/",
-      "Workbench\\App\\": "workbench/app/"
+      "CreativeCrafts\\LaravelSso\\Tests\\": "tests/"
     }
   },
   "scripts": {
@@ -74,23 +74,20 @@
       "@test-coverage"
     ]
   },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "CreativeCrafts\\LaravelSso\\LaravelSsoServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
   "config": {
     "sort-packages": true,
     "allow-plugins": {
       "pestphp/pest-plugin": true,
       "phpstan/extension-installer": true
     }
-  },
-  "extra": {
-    "laravel": {
-      "providers": [
-        "CreativeCrafts\\LaravelSso\\LaravelSsoServiceProvider"
-      ],
-      "aliases": {
-        "LaravelSso": "CreativeCrafts\\LaravelSso\\Facades\\LaravelSso"
-      }
-    }
-  },
-  "minimum-stability": "dev",
-  "prefer-stable": true
+  }
 }
