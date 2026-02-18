@@ -17,4 +17,8 @@ return [
     'middleware' => ['web', 'auth'],
     'gate' => env('SSO_UI_GATE', 'manageSso'),
   ],
+  'tenancy' => [
+    'route_param' => 'tenant',
+    'default_tenant_ulid' => env('SSO_DEFAULT_TENANT_ULID'),
+  ],
 ];
