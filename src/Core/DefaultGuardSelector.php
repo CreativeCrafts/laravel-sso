@@ -13,7 +13,10 @@ final class DefaultGuardSelector implements GuardSelector
 {
     public function selectGuard(Tenant $tenant, Connection $connection): string
     {
-        return $connection->guard
-          ?? Config::string(key: 'auth.defaults.guard', default: 'web');
+        if (is_string($connection->guard) && $connection->guard !== '') {
+            return $connection->guard;
+        }
+
+        return Config::string(key: 'auth.defaults.guard', default: 'web');
     }
 }
