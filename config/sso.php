@@ -21,4 +21,9 @@ return [
     'route_param' => 'tenant',
     'default_tenant_ulid' => env('SSO_DEFAULT_TENANT_ULID'),
   ],
+  'attempts' => [
+    'ttl_seconds' => (int)env('SSO_ATTEMPT_TTL_SECONDS', 600),
+    'state_length' => (int)env('SSO_STATE_LENGTH', 64),
+    'nonce_length' => (int)env('SSO_NONCE_LENGTH', 64),
+  ],
 ];
