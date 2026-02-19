@@ -11,78 +11,59 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('sso_tenants', function (Blueprint $table): void {
-            $table->bigIncrements('id');
+            $table->id();
             $table->ulid('ulid')->unique();
-
             $table->string('name')->nullable();
             $table->json('metadata')->nullable();
-
             $table->timestamps();
         });
 
         Schema::create('sso_identity_providers', function (Blueprint $table): void {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('tenant_id');
-
+            $table->id();
+            $table->foreignId('tenant_id')->constrained('sso_tenants')->cascadeOnDelete();
             $table->string('name');
-            $table->string('protocol', 20);
+            $table->string('protocol');
             $table->boolean('enabled')->default(true);
             $table->json('config')->nullable();
-
             $table->timestamps();
 
-            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
-
-            $table->index(['tenant_id', 'protocol']);
-            $table->unique(['tenant_id', 'name']);
+            $table->index(['tenant_id', 'enabled']);
         });
 
         Schema::create('sso_connections', function (Blueprint $table): void {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('tenant_id');
-            $table->unsignedBigInteger('identity_provider_id');
-
+            $table->id();
+            $table->foreignId('tenant_id')->constrained('sso_tenants')->cascadeOnDelete();
+            $table->foreignId('identity_provider_id')->constrained('sso_identity_providers')->cascadeOnDelete();
             $table->string('name');
             $table->boolean('enabled')->default(true);
-
             $table->string('guard')->nullable();
             $table->json('settings')->nullable();
-
             $table->timestamps();
 
-            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
-            $table->foreign('identity_provider_id')->references('id')->on('sso_identity_providers')->cascadeOnDelete();
-
-            $table->unique(['tenant_id', 'name']);
+            $table->index(['tenant_id', 'enabled']);
             $table->index(['tenant_id', 'identity_provider_id']);
         });
 
         Schema::create('sso_auth_attempts', function (Blueprint $table): void {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('tenant_id');
-            $table->unsignedBigInteger('connection_id')->nullable();
-            $table->unsignedBigInteger('identity_provider_id')->nullable();
+            $table->id();
+            $table->foreignId('tenant_id')->constrained('sso_tenants')->cascadeOnDelete();
+            $table->foreignId('identity_provider_id')->nullable()->constrained('sso_identity_providers')->nullOnDelete();
+            $table->foreignId('connection_id')->nullable()->constrained('sso_connections')->nullOnDelete();
 
-            $table->string('protocol', 20);
-            $table->string('state', 128);
-            $table->string('nonce', 128)->nullable();
-
+            $table->string('protocol');
+            $table->string('state');
+            $table->string('nonce')->nullable();
             $table->text('code_verifier')->nullable();
-            $table->string('redirect_to')->nullable();
+            $table->text('redirect_to')->nullable();
 
             $table->timestamp('expires_at');
             $table->timestamp('consumed_at')->nullable();
 
-            $table->string('ip', 45)->nullable();
+            $table->string('ip')->nullable();
             $table->text('user_agent')->nullable();
 
             $table->json('context')->nullable();
-
             $table->timestamps();
-
-            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
-            $table->foreign('connection_id')->references('id')->on('sso_connections')->nullOnDelete();
-            $table->foreign('identity_provider_id')->references('id')->on('sso_identity_providers')->nullOnDelete();
 
             $table->unique(['tenant_id', 'state']);
             $table->index(['tenant_id', 'expires_at']);
@@ -90,56 +71,40 @@ return new class extends Migration
         });
 
         Schema::create('sso_external_identities', function (Blueprint $table): void {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('tenant_id');
-            $table->unsignedBigInteger('identity_provider_id');
+            $table->id();
+            $table->foreignId('tenant_id')->constrained('sso_tenants')->cascadeOnDelete();
+            $table->foreignId('identity_provider_id')->constrained('sso_identity_providers')->cascadeOnDelete();
 
-            $table->string('provider_subject', 255);
-
+            $table->string('provider_subject');
             $table->string('email')->nullable();
+            $table->string('display_name')->nullable();
 
             $table->string('authenticatable_type');
-            $table->string('authenticatable_id', 64);
+            $table->string('authenticatable_id');
 
-            $table->json('attributes')->nullable();
-            $table->timestamp('last_login_at')->nullable();
-
+            $table->json('claims')->nullable();
             $table->timestamps();
-
-            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
-            $table->foreign('identity_provider_id')->references('id')->on('sso_identity_providers')->cascadeOnDelete();
 
             $table->unique(['tenant_id', 'identity_provider_id', 'provider_subject'], 'sso_extid_unique_subject');
             $table->index(['tenant_id', 'email']);
-            $table->index(['tenant_id', 'authenticatable_type', 'authenticatable_id'], 'sso_extid_authenticatable_idx');
+            $table->index(['authenticatable_type', 'authenticatable_id'], 'sso_extid_authenticatable');
         });
 
         Schema::create('sso_audit_logs', function (Blueprint $table): void {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('tenant_id');
+            $table->id();
+            $table->foreignId('tenant_id')->constrained('sso_tenants')->cascadeOnDelete();
 
-            $table->unsignedBigInteger('identity_provider_id')->nullable();
-            $table->unsignedBigInteger('connection_id')->nullable();
-            $table->unsignedBigInteger('auth_attempt_id')->nullable();
+            $table->foreignId('identity_provider_id')->nullable()->constrained('sso_identity_providers')->nullOnDelete();
+            $table->foreignId('connection_id')->nullable()->constrained('sso_connections')->nullOnDelete();
+            $table->foreignId('auth_attempt_id')->nullable()->constrained('sso_auth_attempts')->nullOnDelete();
 
-            $table->string('event', 100);
-            $table->string('level', 20)->default('info');
-
-            $table->string('ip', 45)->nullable();
-            $table->text('user_agent')->nullable();
-
+            $table->string('event');
+            $table->string('level')->nullable();
             $table->json('context')->nullable();
-            $table->timestamp('occurred_at');
-
             $table->timestamps();
 
-            $table->foreign('tenant_id')->references('id')->on('sso_tenants')->cascadeOnDelete();
-            $table->foreign('identity_provider_id')->references('id')->on('sso_identity_providers')->nullOnDelete();
-            $table->foreign('connection_id')->references('id')->on('sso_connections')->nullOnDelete();
-            $table->foreign('auth_attempt_id')->references('id')->on('sso_auth_attempts')->nullOnDelete();
-
-            $table->index(['tenant_id', 'occurred_at']);
-            $table->index(['tenant_id', 'event']);
+            $table->index(['tenant_id', 'created_at']);
+            $table->index(['event']);
         });
     }
 

@@ -21,14 +21,14 @@ use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
-final class BeginLoginService implements BeginLogin
+final readonly class BeginLoginService implements BeginLogin
 {
     public function __construct(
-        private readonly ConnectionRepository $connections,
-        private readonly IdentityProviderRepository $identityProviders,
-        private readonly AuthAttemptService $attempts,
-        private readonly DriverRegistry $drivers,
-        private readonly Dispatcher $events,
+        private ConnectionRepository $connections,
+        private IdentityProviderRepository $identityProviders,
+        private AuthAttemptService $attempts,
+        private DriverRegistry $drivers,
+        private Dispatcher $events,
     ) {
     }
 

@@ -8,6 +8,17 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
+/**
+ * @property int $id
+ * @property int $tenant_id
+ * @property int $identity_provider_id
+ * @property string $provider_subject
+ * @property string|null $email
+ * @property string|null $display_name
+ * @property string $authenticatable_type
+ * @property int|string $authenticatable_id
+ * @property array<string, mixed> $claims
+ */
 final class ExternalIdentity extends Model
 {
     protected $table = 'sso_external_identities';
@@ -17,15 +28,14 @@ final class ExternalIdentity extends Model
       'identity_provider_id',
       'provider_subject',
       'email',
+      'display_name',
       'authenticatable_type',
       'authenticatable_id',
-      'attributes',
-      'last_login_at',
+      'claims',
     ];
 
     protected $casts = [
-      'attributes' => 'array',
-      'last_login_at' => 'datetime',
+      'claims' => 'array',
     ];
 
     /**
@@ -45,12 +55,10 @@ final class ExternalIdentity extends Model
     }
 
     /**
-     * Polymorphic relation to the application's authenticatable model (user/admin/etc).
-     *
      * @return MorphTo<Model, $this>
      */
     public function authenticatable(): MorphTo
     {
-        return $this->morphTo(__FUNCTION__, 'authenticatable_type', 'authenticatable_id');
+        return $this->morphTo();
     }
 }

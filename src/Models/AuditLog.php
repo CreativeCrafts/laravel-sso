@@ -7,6 +7,16 @@ namespace CreativeCrafts\LaravelSso\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $identity_provider_id
+ * @property int|null $connection_id
+ * @property int|null $auth_attempt_id
+ * @property string $event
+ * @property string|null $level
+ * @property array<string, mixed> $context
+ */
 final class AuditLog extends Model
 {
     protected $table = 'sso_audit_logs';
@@ -18,15 +28,11 @@ final class AuditLog extends Model
       'auth_attempt_id',
       'event',
       'level',
-      'ip',
-      'user_agent',
       'context',
-      'occurred_at',
     ];
 
     protected $casts = [
       'context' => 'array',
-      'occurred_at' => 'datetime',
     ];
 
     /**
