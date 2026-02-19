@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\GuardSelector;
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
 use CreativeCrafts\LaravelSso\Contracts\Policies\IdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
+use CreativeCrafts\LaravelSso\Core\DbAuthAttemptService;
 use CreativeCrafts\LaravelSso\Core\DefaultGuardSelector;
 use CreativeCrafts\LaravelSso\Core\Tenancy\CompositeTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\DefaultTenantResolver;
@@ -66,6 +68,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
             return new CompositeTenantResolver($resolvers);
         });
+        $this->app->singleton(AuthAttemptService::class, DbAuthAttemptService::class);
     }
 
     public function packageBooted(): void

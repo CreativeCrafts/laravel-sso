@@ -42,7 +42,7 @@ final class EloquentIdentityProviderRepository implements IdentityProviderReposi
     {
         $model = $this->findForTenant($tenant, $id);
 
-        if ($model === null) {
+        if (!$model instanceof IdentityProvider) {
             throw TenantScopedRecordNotFound::for(IdentityProvider::class, $id);
         }
 
@@ -67,7 +67,7 @@ final class EloquentIdentityProviderRepository implements IdentityProviderReposi
     {
         $model = $this->findForTenant($tenant, $id);
 
-        if ($model === null) {
+        if (!$model instanceof IdentityProvider) {
             throw TenantScopedRecordNotFound::for(IdentityProvider::class, $id);
         }
 

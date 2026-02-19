@@ -42,7 +42,7 @@ final class EloquentConnectionRepository implements ConnectionRepository
     {
         $model = $this->findForTenant($tenant, $id);
 
-        if ($model === null) {
+        if (!$model instanceof Connection) {
             throw TenantScopedRecordNotFound::for(Connection::class, $id);
         }
 
@@ -67,7 +67,7 @@ final class EloquentConnectionRepository implements ConnectionRepository
     {
         $model = $this->findForTenant($tenant, $id);
 
-        if ($model === null) {
+        if (!$model instanceof Connection) {
             throw TenantScopedRecordNotFound::for(Connection::class, $id);
         }
 
