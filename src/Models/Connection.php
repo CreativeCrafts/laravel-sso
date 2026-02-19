@@ -9,7 +9,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * @property mixed $guard
+ * @property int $id
+ * @property int $tenant_id
+ * @property int $identity_provider_id
+ * @property string $name
+ * @property bool $enabled
+ * @property string|null $guard
+ * @property array<string, mixed> $settings
  */
 final class Connection extends Model
 {

@@ -10,8 +10,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
+ * @property int $id
+ * @property int $tenant_id
+ * @property int|null $connection_id
+ * @property int|null $identity_provider_id
+ * @property string $protocol
+ * @property string $state
+ * @property string|null $nonce
+ * @property string|null $code_verifier
+ * @property string|null $redirect_to
  * @property CarbonInterface $expires_at
  * @property CarbonInterface|null $consumed_at
+ * @property string|null $ip
+ * @property string|null $user_agent
+ * @property array<string, mixed> $context
  */
 final class AuthAttempt extends Model
 {

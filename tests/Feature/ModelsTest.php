@@ -9,6 +9,7 @@ use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use CreativeCrafts\LaravelSso\Tests\TestCase;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 uses(TestCase::class);
 
@@ -25,7 +26,7 @@ it('defines tenant relations', function () {
 
 it('casts json fields to arrays', function () {
     $tenant = Tenant::query()->create([
-      'ulid' => (string)Illuminate\Support\Str::ulid(),
+      'ulid' => (string)Str::ulid(),
       'metadata' => ['plan' => 'pro'],
     ]);
 
@@ -64,7 +65,7 @@ it('casts json fields to arrays', function () {
       'email' => 'user@example.test',
       'authenticatable_type' => 'App\\Models\\User',
       'authenticatable_id' => '1',
-      'attributes' => ['groups' => ['admin']],
+      'claims' => ['groups' => ['admin']],
     ]);
 
     expect($tenant->metadata)
@@ -72,5 +73,5 @@ it('casts json fields to arrays', function () {
       ->and($idp->config)->toBeArray()
       ->and($connection->settings)->toBeArray()
       ->and($attempt->context)->toBeArray()
-      ->and($external->attributes)->toBeArray();
+      ->and($external->claims)->toBeArray();
 });

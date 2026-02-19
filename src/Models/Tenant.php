@@ -7,6 +7,12 @@ namespace CreativeCrafts\LaravelSso\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property string $ulid
+ * @property string|null $name
+ * @property array<string, mixed> $metadata
+ */
 final class Tenant extends Model
 {
     protected $table = 'sso_tenants';
