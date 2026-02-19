@@ -8,6 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $tenant_id
+ * @property string $name
+ * @property string $protocol
+ * @property bool $enabled
+ * @property array<string, mixed>|null $config
+ */
 final class IdentityProvider extends Model
 {
     protected $table = 'sso_identity_providers';

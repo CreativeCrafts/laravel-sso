@@ -40,7 +40,7 @@ final readonly class BeginLoginService implements BeginLogin
             throw TenantScopedRecordNotFound::for(Connection::class, $connectionId);
         }
 
-        $identityProviderId = (int)$connection->identity_provider_id;
+        $identityProviderId = $connection->identity_provider_id;
 
         $identityProvider = $this->identityProviders->findForTenant($tenant, $identityProviderId);
 
