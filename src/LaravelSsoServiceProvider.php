@@ -15,6 +15,8 @@ use CreativeCrafts\LaravelSso\Contracts\Core\UserLocator;
 use CreativeCrafts\LaravelSso\Contracts\Core\UserProvisioner;
 use CreativeCrafts\LaravelSso\Contracts\Policies\IdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\BeginLoginService;
@@ -30,6 +32,8 @@ use CreativeCrafts\LaravelSso\Core\Tenancy\DefaultTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\RouteParamTenantResolver;
 use CreativeCrafts\LaravelSso\Policies\AllowIdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Policies\AllowProvisioningPolicy;
+use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcDiscovery;
+use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentIdentityProviderRepository;
 use Illuminate\Contracts\Container\Container;
@@ -87,6 +91,8 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(UserLocator::class, DefaultUserLocator::class);
         $this->app->singleton(UserProvisioner::class, DefaultUserProvisioner::class);
         $this->app->singleton(ProvisionAndLink::class, ProvisionAndLinkService::class);
+        $this->app->singleton(OidcDiscovery::class, CachedOidcDiscovery::class);
+        $this->app->singleton(OidcEndpointResolver::class, DefaultOidcEndpointResolver::class);
     }
 
     public function packageBooted(): void

@@ -35,4 +35,11 @@ return [
     'email_column' => env('SSO_USER_EMAIL_COLUMN', 'email'),
     'name_column' => env('SSO_USER_NAME_COLUMN', 'name'),
   ],
+  'oidc' => [
+    'discovery' => [
+      'enabled_default' => env('SSO_OIDC_DISCOVERY_ENABLED', true),
+      'cache_ttl_seconds' => env('SSO_OIDC_DISCOVERY_CACHE_TTL', 3600),
+      'http_timeout_seconds' => env('SSO_OIDC_DISCOVERY_HTTP_TIMEOUT', 10),
+    ],
+  ],
 ];
