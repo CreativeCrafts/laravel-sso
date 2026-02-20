@@ -9,7 +9,10 @@ use CreativeCrafts\LaravelSso\Contracts\Core\BeginLogin;
 use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
 use CreativeCrafts\LaravelSso\Contracts\Core\GuardSelector;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
+use CreativeCrafts\LaravelSso\Contracts\Core\ProvisionAndLink;
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
+use CreativeCrafts\LaravelSso\Contracts\Core\UserLocator;
+use CreativeCrafts\LaravelSso\Contracts\Core\UserProvisioner;
 use CreativeCrafts\LaravelSso\Contracts\Policies\IdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
@@ -18,7 +21,10 @@ use CreativeCrafts\LaravelSso\Core\BeginLoginService;
 use CreativeCrafts\LaravelSso\Core\ConfigDriverRegistry;
 use CreativeCrafts\LaravelSso\Core\DbAuthAttemptService;
 use CreativeCrafts\LaravelSso\Core\DefaultGuardSelector;
+use CreativeCrafts\LaravelSso\Core\DefaultUserLocator;
+use CreativeCrafts\LaravelSso\Core\DefaultUserProvisioner;
 use CreativeCrafts\LaravelSso\Core\HandleCallbackService;
+use CreativeCrafts\LaravelSso\Core\ProvisionAndLinkService;
 use CreativeCrafts\LaravelSso\Core\Tenancy\CompositeTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\DefaultTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\RouteParamTenantResolver;
@@ -78,6 +84,9 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(DriverRegistry::class, ConfigDriverRegistry::class);
         $this->app->singleton(BeginLogin::class, BeginLoginService::class);
         $this->app->singleton(HandleCallback::class, HandleCallbackService::class);
+        $this->app->singleton(UserLocator::class, DefaultUserLocator::class);
+        $this->app->singleton(UserProvisioner::class, DefaultUserProvisioner::class);
+        $this->app->singleton(ProvisionAndLink::class, ProvisionAndLinkService::class);
     }
 
     public function packageBooted(): void

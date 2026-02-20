@@ -31,4 +31,8 @@ return [
     'nonce_length' => (int)env('SSO_NONCE_LENGTH', 64),
     'code_verifier_length' => (int)env('SSO_CODE_VERIFIER_LENGTH', 96),
   ],
+  'provisioning' => [
+    'email_column' => env('SSO_USER_EMAIL_COLUMN', 'email'),
+    'name_column' => env('SSO_USER_NAME_COLUMN', 'name'),
+  ],
 ];

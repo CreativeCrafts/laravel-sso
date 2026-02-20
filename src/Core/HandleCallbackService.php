@@ -20,13 +20,13 @@ use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
 use Throwable;
 
-final class HandleCallbackService implements HandleCallback
+final readonly class HandleCallbackService implements HandleCallback
 {
     public function __construct(
-        private readonly ConnectionRepository $connections,
-        private readonly IdentityProviderRepository $identityProviders,
-        private readonly AuthAttemptService $attempts,
-        private readonly DriverRegistry $drivers,
+        private ConnectionRepository $connections,
+        private IdentityProviderRepository $identityProviders,
+        private AuthAttemptService $attempts,
+        private DriverRegistry $drivers,
     ) {
     }
 

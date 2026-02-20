@@ -12,6 +12,9 @@ final readonly class DriverCallbackResult
      */
     public function __construct(
         public bool $authenticated,
+        public ?string $subject = null,
+        public ?string $email = null,
+        public ?string $displayName = null,
         public array $claims = [],
         public array $context = [],
         public ?string $error = null,
