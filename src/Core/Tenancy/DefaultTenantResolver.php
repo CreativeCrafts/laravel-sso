@@ -8,10 +8,10 @@ use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
 
-final class DefaultTenantResolver implements TenantResolver
+final readonly class DefaultTenantResolver implements TenantResolver
 {
     public function __construct(
-        private readonly ?string $defaultTenantUlid,
+        private ?string $defaultTenantUlid,
     ) {
     }
 

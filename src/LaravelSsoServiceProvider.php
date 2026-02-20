@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\BeginLogin;
 use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
 use CreativeCrafts\LaravelSso\Contracts\Core\GuardSelector;
+use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
 use CreativeCrafts\LaravelSso\Contracts\Policies\IdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
@@ -17,6 +18,7 @@ use CreativeCrafts\LaravelSso\Core\BeginLoginService;
 use CreativeCrafts\LaravelSso\Core\ConfigDriverRegistry;
 use CreativeCrafts\LaravelSso\Core\DbAuthAttemptService;
 use CreativeCrafts\LaravelSso\Core\DefaultGuardSelector;
+use CreativeCrafts\LaravelSso\Core\HandleCallbackService;
 use CreativeCrafts\LaravelSso\Core\Tenancy\CompositeTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\DefaultTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\RouteParamTenantResolver;
@@ -75,6 +77,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(AuthAttemptService::class, DbAuthAttemptService::class);
         $this->app->singleton(DriverRegistry::class, ConfigDriverRegistry::class);
         $this->app->singleton(BeginLogin::class, BeginLoginService::class);
+        $this->app->singleton(HandleCallback::class, HandleCallbackService::class);
     }
 
     public function packageBooted(): void
