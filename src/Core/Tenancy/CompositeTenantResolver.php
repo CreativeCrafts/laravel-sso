@@ -8,13 +8,13 @@ use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
 
-final class CompositeTenantResolver implements TenantResolver
+final readonly class CompositeTenantResolver implements TenantResolver
 {
     /**
      * @param array<int, TenantResolver> $resolvers
      */
     public function __construct(
-        private readonly array $resolvers,
+        private array $resolvers,
     ) {
     }
 

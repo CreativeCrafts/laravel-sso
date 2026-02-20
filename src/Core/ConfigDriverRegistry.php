@@ -11,10 +11,10 @@ use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Facades\Config;
 
-final class ConfigDriverRegistry implements DriverRegistry
+final readonly class ConfigDriverRegistry implements DriverRegistry
 {
     public function __construct(
-        private readonly Container $container,
+        private Container $container,
     ) {
     }
 

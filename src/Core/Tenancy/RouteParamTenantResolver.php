@@ -8,10 +8,10 @@ use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
 
-final class RouteParamTenantResolver implements TenantResolver
+final readonly class RouteParamTenantResolver implements TenantResolver
 {
     public function __construct(
-        private readonly string $routeParam,
+        private string $routeParam,
     ) {
     }
 
