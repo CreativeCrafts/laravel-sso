@@ -49,5 +49,10 @@ return [
     'userinfo' => [
       'enabled_default' => env('SSO_OIDC_USERINFO_ENABLED', false),
     ],
+    'id_token' => [
+      'clock_skew_seconds' => env('SSO_OIDC_CLOCK_SKEW_SECONDS', 60),
+      'jwks_cache_ttl_seconds' => env('SSO_OIDC_JWKS_CACHE_TTL', 3600),
+      'jwks_http_timeout_seconds' => env('SSO_OIDC_JWKS_HTTP_TIMEOUT', 10),
+    ],
   ],
 ];
