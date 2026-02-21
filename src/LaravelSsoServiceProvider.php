@@ -15,6 +15,7 @@ use CreativeCrafts\LaravelSso\Contracts\Core\UserLocator;
 use CreativeCrafts\LaravelSso\Contracts\Core\UserProvisioner;
 use CreativeCrafts\LaravelSso\Contracts\Policies\IdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcIdTokenValidator;
@@ -36,6 +37,7 @@ use CreativeCrafts\LaravelSso\Policies\AllowIdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Policies\AllowProvisioningPolicy;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcDiscovery;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcJwksFetcher;
+use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcIdTokenValidator;
 use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
@@ -99,6 +101,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(OidcEndpointResolver::class, DefaultOidcEndpointResolver::class);
         $this->app->singleton(OidcJwksFetcher::class, CachedOidcJwksFetcher::class);
         $this->app->singleton(OidcIdTokenValidator::class, DefaultOidcIdTokenValidator::class);
+        $this->app->singleton(OidcClaimsNormalizer::class, DefaultOidcClaimsNormalizer::class);
     }
 
     public function packageBooted(): void

@@ -63,9 +63,13 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         /** @var array<string, mixed> $claims */
         $claims = $callback->claims;
 
-        $subject = $this->extractSubject($callback, $claims);
-        $email = $this->extractEmail($callback, $claims);
-        $displayName = $this->extractDisplayName($callback, $claims);
+        $subject = $callback->canonicalClaims->subject;
+        $email = $callback->canonicalClaims->email;
+        $displayName = $callback->canonicalClaims->displayName;
+
+        if ($subject === '') {
+            throw MissingExternalSubject::make();
+        }
 
         $guard = $this->guards->selectGuard($tenant, $connection);
 
@@ -144,58 +148,6 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         $this->auth->guard($guard)->login($user);
 
         return $user;
-    }
-
-    /**
-     * @param array<string, mixed> $claims
-     */
-    private function extractSubject(DriverCallbackResult $callback, array $claims): string
-    {
-        if (is_string($callback->subject) && $callback->subject !== '') {
-            return $callback->subject;
-        }
-
-        $sub = $claims['sub'] ?? null;
-
-        if (is_string($sub) && $sub !== '') {
-            return $sub;
-        }
-
-        $nameId = $claims['name_id'] ?? null;
-
-        if (is_string($nameId) && $nameId !== '') {
-            return $nameId;
-        }
-
-        throw MissingExternalSubject::make();
-    }
-
-    /**
-     * @param array<string, mixed> $claims
-     */
-    private function extractEmail(DriverCallbackResult $callback, array $claims): ?string
-    {
-        if (is_string($callback->email) && $callback->email !== '') {
-            return $callback->email;
-        }
-
-        $email = $claims['email'] ?? null;
-
-        return is_string($email) && $email !== '' ? $email : null;
-    }
-
-    /**
-     * @param array<string, mixed> $claims
-     */
-    private function extractDisplayName(DriverCallbackResult $callback, array $claims): ?string
-    {
-        if (is_string($callback->displayName) && $callback->displayName !== '') {
-            return $callback->displayName;
-        }
-
-        $name = $claims['name'] ?? null;
-
-        return is_string($name) && $name !== '' ? $name : null;
     }
 
     /**
