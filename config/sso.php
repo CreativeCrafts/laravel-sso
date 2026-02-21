@@ -43,5 +43,11 @@ return [
       'cache_ttl_seconds' => env('SSO_OIDC_DISCOVERY_CACHE_TTL', 3600),
       'http_timeout_seconds' => env('SSO_OIDC_DISCOVERY_HTTP_TIMEOUT', 10),
     ],
+    'callback' => [
+      'http_timeout_seconds' => env('SSO_OIDC_CALLBACK_HTTP_TIMEOUT', 10),
+    ],
+    'userinfo' => [
+      'enabled_default' => env('SSO_OIDC_USERINFO_ENABLED', false),
+    ],
   ],
 ];
