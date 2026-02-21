@@ -6,11 +6,13 @@ namespace CreativeCrafts\LaravelSso\Drivers;
 
 use CreativeCrafts\LaravelSso\Contracts\Core\SsoDriver;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcIdTokenValidator;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverStartResult;
 use CreativeCrafts\LaravelSso\Exceptions\OidcAuthorizationRequestFailed;
 use CreativeCrafts\LaravelSso\Exceptions\OidcCallbackCodeMissing;
 use CreativeCrafts\LaravelSso\Exceptions\OidcCallbackErrorResponse;
+use CreativeCrafts\LaravelSso\Exceptions\OidcIdTokenValidationFailed;
 use CreativeCrafts\LaravelSso\Exceptions\OidcTokenExchangeFailed;
 use CreativeCrafts\LaravelSso\Exceptions\OidcUserinfoFailed;
 use CreativeCrafts\LaravelSso\Models\AuthAttempt;
@@ -20,13 +22,13 @@ use CreativeCrafts\LaravelSso\Models\Tenant;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\OidcPkce;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Request;
-use JsonException;
 use Throwable;
 
 final readonly class OidcDriver implements SsoDriver
 {
     public function __construct(
         private OidcEndpointResolver $endpoints,
+        private OidcIdTokenValidator $idTokens,
         private HttpFactory $http,
     ) {
     }
@@ -200,12 +202,11 @@ final readonly class OidcDriver implements SsoDriver
             $idToken = $token['id_token'] ?? null;
             $idToken = is_string($idToken) && $idToken !== '' ? $idToken : null;
 
-            /** @var array<string, mixed> $claims */
-            $claims = [];
-
-            if ($idToken !== null) {
-                $claims = $this->decodeJwtPayloadUnverified($idToken);
+            if ($idToken === null) {
+                throw OidcIdTokenValidationFailed::make('missing id_token');
             }
+
+            $claims = $this->idTokens->validate($identityProvider, $attempt, $idToken);
 
             $userinfoEnabled = $this->userinfoEnabled($identityProvider);
             if ($userinfoEnabled && $accessToken !== null && $ep->userinfoEndpoint !== null) {
@@ -231,12 +232,10 @@ final readonly class OidcDriver implements SsoDriver
                 context: [
                 'token_endpoint' => $ep->tokenEndpoint,
                 'userinfo_used' => $userinfoEnabled && $ep->userinfoEndpoint !== null && $accessToken !== null,
-                'has_id_token' => $idToken !== null,
-                'has_access_token' => $accessToken !== null,
               ],
                 error: null,
             );
-        } catch (OidcTokenExchangeFailed|OidcUserinfoFailed|OidcCallbackErrorResponse|OidcCallbackCodeMissing $e) {
+        } catch (OidcTokenExchangeFailed|OidcUserinfoFailed|OidcCallbackErrorResponse|OidcCallbackCodeMissing|OidcIdTokenValidationFailed $e) {
             throw $e;
         } catch (Throwable $e) {
             throw OidcTokenExchangeFailed::make('unexpected error', $e);
@@ -260,47 +259,6 @@ final readonly class OidcDriver implements SsoDriver
             'unsupported_grant_type' => 'oidc.unsupported_grant_type',
             default => 'oidc.token_exchange_failed',
         };
-    }
-
-    /**
-     * Decode JWT payload without signature validation (validation is next issue).
-     *
-     * @return array<string, mixed>
-     * @throws JsonException
-     */
-    private function decodeJwtPayloadUnverified(string $jwt): array
-    {
-        $parts = explode('.', $jwt);
-
-        if (count($parts) < 2) {
-            return [];
-        }
-
-        $payloadJson = $this->base64UrlDecode($parts[1]);
-
-        $decoded = json_decode($payloadJson, true, 512, JSON_THROW_ON_ERROR);
-
-        if (!is_array($decoded)) {
-            return [];
-        }
-
-        return array_filter($decoded, static function ($key) {
-            return is_string($key) && $key !== '';
-        }, ARRAY_FILTER_USE_KEY);
-    }
-
-    private function base64UrlDecode(string $value): string
-    {
-        $value = strtr($value, '-_', '+/');
-
-        $pad = strlen($value) % 4;
-        if ($pad > 0) {
-            $value .= str_repeat('=', 4 - $pad);
-        }
-
-        $decoded = base64_decode($value, true);
-
-        return is_string($decoded) ? $decoded : '';
     }
 
     private function userinfoEnabled(IdentityProvider $identityProvider): bool
@@ -340,10 +298,9 @@ final readonly class OidcDriver implements SsoDriver
                 throw OidcUserinfoFailed::make('userinfo response is not JSON object');
             }
 
-            /** @var array<string, mixed> $payload */
-            $payload = $json;
-
-            return $payload;
+            return array_filter($json, static function ($k) {
+                return is_string($k) && $k !== '';
+            }, ARRAY_FILTER_USE_KEY);
         } catch (OidcUserinfoFailed $e) {
             throw $e;
         } catch (Throwable $e) {
