@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Drivers;
 
 use CreativeCrafts\LaravelSso\Contracts\Core\SsoDriver;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcIdTokenValidator;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
@@ -29,6 +30,7 @@ final readonly class OidcDriver implements SsoDriver
     public function __construct(
         private OidcEndpointResolver $endpoints,
         private OidcIdTokenValidator $idTokens,
+        private OidcClaimsNormalizer $claimsNormalizer,
         private HttpFactory $http,
     ) {
     }
@@ -97,7 +99,6 @@ final readonly class OidcDriver implements SsoDriver
         ];
 
         $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
-
         $separator = str_contains($ep->authorizationEndpoint, '?') ? '&' : '?';
 
         return new DriverStartResult(
@@ -148,7 +149,6 @@ final readonly class OidcDriver implements SsoDriver
         }
 
         $ep = $this->endpoints->resolve($identityProvider);
-
         $timeout = $this->timeoutSeconds();
 
         try {
@@ -206,32 +206,27 @@ final readonly class OidcDriver implements SsoDriver
                 throw OidcIdTokenValidationFailed::make('missing id_token');
             }
 
-            $claims = $this->idTokens->validate($identityProvider, $attempt, $idToken);
+            $rawClaims = $this->idTokens->validate($identityProvider, $attempt, $idToken);
 
             $userinfoEnabled = $this->userinfoEnabled($identityProvider);
             if ($userinfoEnabled && $accessToken !== null && $ep->userinfoEndpoint !== null) {
                 $userinfoClaims = $this->fetchUserinfo($ep->userinfoEndpoint, $accessToken, $timeout);
-                $claims = array_merge($claims, $userinfoClaims);
+                $rawClaims = array_merge($rawClaims, $userinfoClaims);
             }
 
-            $subject = $claims['sub'] ?? null;
-            $subject = is_string($subject) && $subject !== '' ? $subject : null;
-
-            $email = $claims['email'] ?? null;
-            $email = is_string($email) && $email !== '' ? $email : null;
-
-            $name = $claims['name'] ?? null;
-            $name = is_string($name) && $name !== '' ? $name : null;
+            $canonical = $this->claimsNormalizer->normalize($rawClaims);
 
             return new DriverCallbackResult(
                 authenticated: true,
-                subject: $subject,
-                email: $email,
-                displayName: $name,
-                claims: $claims,
+                canonicalClaims: $canonical,
+                subject: $canonical->subject,
+                email: $canonical->email,
+                displayName: $canonical->displayName,
+                claims: $canonical->toArray(),
                 context: [
                 'token_endpoint' => $ep->tokenEndpoint,
                 'userinfo_used' => $userinfoEnabled && $ep->userinfoEndpoint !== null && $accessToken !== null,
+                'raw_claims' => $rawClaims,
               ],
                 error: null,
             );

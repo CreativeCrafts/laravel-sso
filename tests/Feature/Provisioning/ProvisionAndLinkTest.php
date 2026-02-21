@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelSso\Contracts\Core\ProvisionAndLink;
+use CreativeCrafts\LaravelSso\Core\Dto\Claims;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\ExternalIdentity;
@@ -52,12 +53,28 @@ it('provisions a new user, links external identity, and logs in', function () {
       'settings' => [],
     ]);
 
-    $callback = new DriverCallbackResult(
-        authenticated: true,
+    $canonical = new Claims(
         subject: 'sub-123',
         email: 'user@example.test',
         displayName: 'User One',
-        claims: ['sub' => 'sub-123', 'email' => 'user@example.test', 'name' => 'User One'],
+        emailVerified: null,
+        groups: [],
+        normalized: [
+        'sub' => 'sub-123',
+        'email' => 'user@example.test',
+        'name' => 'User One',
+        'email_verified' => null,
+        'groups' => [],
+      ],
+    );
+
+    $callback = new DriverCallbackResult(
+        authenticated: true,
+        canonicalClaims: $canonical,
+        subject: $canonical->subject,
+        email: $canonical->email,
+        displayName: $canonical->displayName,
+        claims: $canonical->toArray(),
     );
 
     $request = Request::create('/sso/callback', 'GET');
@@ -108,12 +125,28 @@ it('links an existing user by email and logs in', function () {
       'name' => 'Existing',
     ]);
 
-    $callback = new DriverCallbackResult(
-        authenticated: true,
+    $canonical = new Claims(
         subject: 'sub-456',
         email: 'user@example.test',
         displayName: 'Existing',
-        claims: ['sub' => 'sub-456', 'email' => 'user@example.test'],
+        emailVerified: null,
+        groups: [],
+        normalized: [
+        'sub' => 'sub-456',
+        'email' => 'user@example.test',
+        'name' => 'Existing',
+        'email_verified' => null,
+        'groups' => [],
+      ],
+    );
+
+    $callback = new DriverCallbackResult(
+        authenticated: true,
+        canonicalClaims: $canonical,
+        subject: $canonical->subject,
+        email: $canonical->email,
+        displayName: $canonical->displayName,
+        claims: $canonical->toArray(),
     );
 
     $request = Request::create('/sso/callback', 'GET');
