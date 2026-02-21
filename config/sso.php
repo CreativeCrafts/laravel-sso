@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelSso\Drivers\OidcDriver;
+
 return [
   'enabled' => env('SSO_ENABLED', true),
 
@@ -22,7 +24,7 @@ return [
     'default_tenant_ulid' => env('SSO_DEFAULT_TENANT_ULID'),
   ],
   'drivers' => [
-      // 'oidc' => \CreativeCrafts\LaravelSso\Drivers\OidcDriver::class,
+    'oidc' => OidcDriver::class,
       // 'saml' => \CreativeCrafts\LaravelSso\Drivers\SamlDriver::class,
   ],
   'attempts' => [
