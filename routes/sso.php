@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
+use CreativeCrafts\LaravelSso\Http\Controllers\SamlAcsController;
+use CreativeCrafts\LaravelSso\Http\Controllers\SamlSpMetadataController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,13 +21,10 @@ Route::group([
     })->name('oidc.callback');
 
     Route::post('{tenant}/{idp}/acs', static function (Request $request, string $tenant, string $idp) {
-        abort(501, 'SAML ACS endpoint not implemented yet.');
+        return app(SamlAcsController::class)($request, $tenant, $idp);
     })->name('saml.acs');
 
-    Route::get('{tenant}/{idp}/metadata', static function (string $tenant, string $idp) {
-        $xml = app(SpMetadataGenerator::class)->generate($tenant, $idp);
-
-        return response($xml, 200)
-          ->header('Content-Type', 'application/samlmetadata+xml; charset=UTF-8');
+    Route::get('{tenant}/{idp}/metadata', static function (Request $request, string $tenant, string $idp) {
+        return app(SamlSpMetadataController::class)($request, $tenant, $idp);
     })->name('saml.metadata');
 });
