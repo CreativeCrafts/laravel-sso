@@ -1,0 +1,206 @@
+<?php
+
+declare(strict_types=1);
+
+namespace CreativeCrafts\LaravelSso\Protocol\Saml;
+
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
+use CreativeCrafts\LaravelSso\Exceptions\SamlMetadataParseFailed;
+use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureInvalid;
+use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureMissing;
+use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
+use DOMDocument;
+use DOMElement;
+use DOMXPath;
+use RobRichards\XMLSecLibs\XMLSecurityDSig;
+use RobRichards\XMLSecLibs\XMLSecurityKey;
+use Throwable;
+
+final class DefaultSamlSignatureValidator implements SamlSignatureValidator
+{
+    private const string NS_SAML_PROTOCOL = 'urn:oasis:names:tc:SAML:2.0:protocol';
+    private const string NS_SAML_ASSERTION = 'urn:oasis:names:tc:SAML:2.0:assertion';
+    private const string NS_DS = 'http://www.w3.org/2000/09/xmldsig#';
+
+    /**
+     * @param array<int, string> $signingCertificatesPem
+     */
+    public function validate(string $xml, array $signingCertificatesPem): SamlSignedXml
+    {
+        $doc = $this->loadXml($xml);
+
+        $this->registerAllIdAttributes($doc);
+
+        $xpath = new DOMXPath($doc);
+        $xpath->registerNamespace('samlp', self::NS_SAML_PROTOCOL);
+        $xpath->registerNamespace('saml', self::NS_SAML_ASSERTION);
+        $xpath->registerNamespace('ds', self::NS_DS);
+
+        $response = $this->firstElement($xpath, '/samlp:Response');
+        $assertion = $this->firstElement($xpath, '//saml:Assertion');
+
+        $validatedResponse = false;
+        $validatedAssertion = false;
+
+        $hasAnySignature = false;
+
+        if ($response instanceof DOMElement && $this->hasSignature($xpath, $response)) {
+            $hasAnySignature = true;
+            $validatedResponse = $this->verifySignedElement($response, $signingCertificatesPem);
+        }
+
+        if ($assertion instanceof DOMElement && $this->hasSignature($xpath, $assertion)) {
+            $hasAnySignature = true;
+            $validatedAssertion = $this->verifySignedElement($assertion, $signingCertificatesPem);
+        }
+
+        if ($hasAnySignature === false) {
+            throw SamlSignatureMissing::make();
+        }
+
+        if ($validatedResponse === false && $validatedAssertion === false) {
+            throw SamlSignatureInvalid::make();
+        }
+
+        return new SamlSignedXml(
+            document: $doc,
+            validatedResponseSignature: $validatedResponse,
+            validatedAssertionSignature: $validatedAssertion,
+        );
+    }
+
+    private function loadXml(string $xml): DOMDocument
+    {
+        try {
+            $xml = ltrim($xml);
+
+            $previous = libxml_use_internal_errors(true);
+            libxml_clear_errors();
+
+            $doc = new DOMDocument();
+            // Preserve whitespace; stripping can break SignedInfo canonicalization integrity.
+            $doc->preserveWhiteSpace = true;
+            $doc->formatOutput = false;
+            $doc->resolveExternals = false;
+            $doc->substituteEntities = false;
+
+            $ok = $doc->loadXML($xml, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+
+            $errors = libxml_get_errors();
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+
+            if ($ok !== true || $errors !== []) {
+                throw SamlMetadataParseFailed::invalidXml();
+            }
+
+            return $doc;
+        } catch (Throwable $e) {
+            throw SamlMetadataParseFailed::invalidXml($e);
+        }
+    }
+
+    private function registerAllIdAttributes(DOMDocument $doc): void
+    {
+        $xpath = new DOMXPath($doc);
+        $nodes = $xpath->query('//*[@ID]');
+
+        if ($nodes === false) {
+            return;
+        }
+
+        foreach ($nodes as $node) {
+            if ($node instanceof DOMElement) {
+                $node->setIdAttribute('ID', true);
+            }
+        }
+    }
+
+    private function firstElement(DOMXPath $xpath, string $query): ?DOMElement
+    {
+        $nodes = $xpath->query($query);
+
+        if ($nodes === false || $nodes->length < 1) {
+            return null;
+        }
+
+        $node = $nodes->item(0);
+
+        return $node instanceof DOMElement ? $node : null;
+    }
+
+    private function hasSignature(DOMXPath $xpath, DOMElement $scope): bool
+    {
+        $nodes = $xpath->query('ds:Signature', $scope);
+
+        return $nodes !== false && $nodes->length > 0;
+    }
+
+    /**
+     * @param array<int, string> $signingCertificatesPem
+     */
+    private function verifySignedElement(DOMElement $signedElement, array $signingCertificatesPem): bool
+    {
+        try {
+            $doc = $signedElement->ownerDocument;
+
+            if (!$doc instanceof DOMDocument) {
+                return false;
+            }
+
+            $signatureNode = $this->signatureNodeWithin($doc, $signedElement);
+
+            if (!$signatureNode instanceof DOMElement) {
+                return false;
+            }
+
+            $dsig = new XMLSecurityDSig();
+            $dsig->sigNode = $signatureNode;
+            $dsig->idKeys = ['ID'];
+
+            $dsig->canonicalizeSignedInfo();
+
+            $refsOk = $dsig->validateReference();
+            if ($refsOk !== true) {
+                return false;
+            }
+
+            foreach ($signingCertificatesPem as $certPem) {
+                if ($certPem === '') {
+                    continue;
+                }
+
+                $key = $dsig->locateKey();
+                if (!$key instanceof XMLSecurityKey) {
+                    return false;
+                }
+
+                $key->loadKey($certPem, false, true);
+
+                if ($dsig->verify($key) === 1) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private function signatureNodeWithin(DOMDocument $doc, DOMElement $scope): ?DOMElement
+    {
+        $xpath = new DOMXPath($doc);
+        $xpath->registerNamespace('ds', self::NS_DS);
+
+        $nodes = $xpath->query('ds:Signature', $scope);
+
+        if ($nodes === false || $nodes->length < 1) {
+            return null;
+        }
+
+        $node = $nodes->item(0);
+
+        return $node instanceof DOMElement ? $node : null;
+    }
+}
