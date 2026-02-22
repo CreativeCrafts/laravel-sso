@@ -20,6 +20,7 @@ use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcIdTokenValidator;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlMetadataParser;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\BeginLoginService;
@@ -40,6 +41,7 @@ use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcJwksFetcher;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcIdTokenValidator;
+use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlMetadataParser;
 use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentIdentityProviderRepository;
 use Illuminate\Contracts\Container\Container;
@@ -64,6 +66,8 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(GuardSelector::class, DefaultGuardSelector::class);
         $this->app->singleton(ProvisioningPolicy::class, AllowProvisioningPolicy::class);
         $this->app->singleton(IdentityLinkPolicy::class, AllowIdentityLinkPolicy::class);
+
+        $this->app->singleton(SamlMetadataParser::class, DefaultSamlMetadataParser::class);
 
         $this->app->singleton(RouteParamTenantResolver::class, function (Container $app): RouteParamTenantResolver {
             $value = config('sso.tenancy.route_param', 'tenant');
