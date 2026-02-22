@@ -55,4 +55,12 @@ return [
       'jwks_http_timeout_seconds' => env('SSO_OIDC_JWKS_HTTP_TIMEOUT', 10),
     ],
   ],
+  'saml' => [
+    'sp' => [
+        // Optional override. If null, we default entityID to the metadata URL.
+      'entity_id' => env('SSO_SAML_SP_ENTITY_ID'),
+        // Binding for ACS endpoint in generated metadata.
+      'acs_binding' => env('SSO_SAML_SP_ACS_BINDING', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'),
+    ],
+  ],
 ];

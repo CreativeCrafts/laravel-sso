@@ -14,11 +14,11 @@ use Throwable;
 
 final class DefaultSamlMetadataParser implements SamlMetadataParser
 {
-    private const NS_MD = 'urn:oasis:names:tc:SAML:2.0:metadata';
-    private const NS_DS = 'http://www.w3.org/2000/09/xmldsig#';
+    private const string NS_MD = 'urn:oasis:names:tc:SAML:2.0:metadata';
+    private const string NS_DS = 'http://www.w3.org/2000/09/xmldsig#';
 
-    private const BINDING_HTTP_REDIRECT = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';
-    private const BINDING_HTTP_POST = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST';
+    private const string BINDING_HTTP_REDIRECT = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect';
+    private const string BINDING_HTTP_POST = 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST';
 
     public function parse(string $xml): SamlIdpMetadata
     {
