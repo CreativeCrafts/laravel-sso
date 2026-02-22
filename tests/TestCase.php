@@ -27,6 +27,13 @@ abstract class TestCase extends Orchestra
         $this->artisan('migrate', ['--database' => 'testing'])->run();
     }
 
+    protected function getEnvironmentSetUp($app): void
+    {
+        // 32-byte key (base64-encoded) required for aes-256-* ciphers.
+        $app['config']->set('app.key', 'base64:MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=');
+        $app['config']->set('app.cipher', 'aes-256-cbc');
+    }
+
     /**
      * @param Application $app
      * @return array<int, class-string>
