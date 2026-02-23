@@ -20,6 +20,7 @@ use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcIdTokenValidator;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionConditionsValidator;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlMetadataParser;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
@@ -42,6 +43,7 @@ use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcJwksFetcher;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcIdTokenValidator;
+use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlAssertionConditionsValidator;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlMetadataParser;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
@@ -73,6 +75,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(SamlMetadataParser::class, DefaultSamlMetadataParser::class);
         $this->app->singleton(SpMetadataGenerator::class);
         $this->app->singleton(SamlSignatureValidator::class, DefaultSamlSignatureValidator::class);
+        $this->app->singleton(SamlAssertionConditionsValidator::class, DefaultSamlAssertionConditionsValidator::class);
 
         $this->app->singleton(RouteParamTenantResolver::class, function (Container $app): RouteParamTenantResolver {
             $value = config('sso.tenancy.route_param', 'tenant');
