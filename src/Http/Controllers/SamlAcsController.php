@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Controllers;
 
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionConditionsValidator;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Exceptions\SamlAcsRequestInvalid;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Config;
 use Symfony\Component\HttpFoundation\Response;
 
 final readonly class SamlAcsController
 {
     public function __construct(
         private SamlSignatureValidator $signatures,
+        private SamlAssertionConditionsValidator $conditions,
     ) {
     }
 
@@ -44,20 +47,33 @@ final readonly class SamlAcsController
         $idpConfig = is_array($identityProvider->config) ? $identityProvider->config : [];
 
         $rawCerts = $idpConfig['saml_signing_certs_pem'] ?? [];
-
-        if (!is_array($rawCerts)) {
-            $rawCerts = [];
-        }
+        $certs = is_array($rawCerts) ? $rawCerts : [];
 
         $signingCertsPem = [];
-
-        foreach ($rawCerts as $cert) {
+        foreach ($certs as $cert) {
             if (is_string($cert) && $cert !== '') {
                 $signingCertsPem[] = $cert;
             }
         }
 
-        $this->signatures->validate($xml, $signingCertsPem);
+        $signed = $this->signatures->validate($xml, $signingCertsPem);
+
+        $acsUrl = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
+        $metadataUrl = route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
+
+        $entityId = config('sso.saml.sp.entity_id');
+        $expectedAudience = is_string($entityId) && $entityId !== '' ? $entityId : $metadataUrl;
+
+        $this->conditions->validate(
+            signed: $signed,
+            expectedAudience: $expectedAudience,
+            expectedRecipient: $acsUrl,
+            expectedDestination: $acsUrl,
+            clockSkewSeconds: Config::integer('sso.saml.clock_skew_seconds', 60),
+            requireAudience: (bool)config('sso.saml.require_audience', true),
+            requireRecipient: (bool)config('sso.saml.require_recipient', true),
+            requireDestination: (bool)config('sso.saml.require_destination', true),
+        );
 
         return response('', 204);
     }

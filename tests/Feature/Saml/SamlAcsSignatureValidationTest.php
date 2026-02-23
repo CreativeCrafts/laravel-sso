@@ -10,6 +10,12 @@ use Illuminate\Support\Str;
 
 uses(TestCase::class);
 
+beforeEach(function () {
+    config()->set('sso.saml.require_destination', false);
+    config()->set('sso.saml.require_audience', false);
+    config()->set('sso.saml.require_recipient', false);
+});
+
 it('accepts a SAMLResponse when assertion signature is valid for configured cert', function () {
     $tenant = Tenant::query()->create(['ulid' => (string)Str::ulid(), 'name' => 'T1']);
 

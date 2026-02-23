@@ -56,6 +56,11 @@ return [
     ],
   ],
   'saml' => [
+    'clock_skew_seconds' => (int)env('SSO_SAML_CLOCK_SKEW_SECONDS', 60),
+
+    'require_destination' => env('SSO_SAML_REQUIRE_DESTINATION', true),
+    'require_audience' => env('SSO_SAML_REQUIRE_AUDIENCE', true),
+    'require_recipient' => env('SSO_SAML_REQUIRE_RECIPIENT', true),
     'sp' => [
         // Optional override. If null, we default entityID to the metadata URL.
       'entity_id' => env('SSO_SAML_SP_ENTITY_ID'),
