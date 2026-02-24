@@ -38,6 +38,8 @@ use CreativeCrafts\LaravelSso\Core\HandleCallbackService;
 use CreativeCrafts\LaravelSso\Core\ProvisionAndLinkService;
 use CreativeCrafts\LaravelSso\Core\Tenancy\CompositeTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\DefaultTenantResolver;
+use CreativeCrafts\LaravelSso\Core\Tenancy\HeaderTenantResolver;
+use CreativeCrafts\LaravelSso\Core\Tenancy\HostTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\RouteParamTenantResolver;
 use CreativeCrafts\LaravelSso\Policies\AllowIdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Policies\AllowProvisioningPolicy;
@@ -56,6 +58,7 @@ use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
 use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentIdentityProviderRepository;
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Support\Facades\Config;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -86,7 +89,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(SamlClaimsMapper::class, DefaultSamlClaimsMapper::class);
         $this->app->singleton(SamlClaimsNormalizer::class, DefaultSamlClaimsNormalizer::class);
 
-        $this->app->singleton(RouteParamTenantResolver::class, function (Container $app): RouteParamTenantResolver {
+        $this->app->singleton(RouteParamTenantResolver::class, function (): RouteParamTenantResolver {
             $value = config('sso.tenancy.route_param', 'tenant');
 
             return new RouteParamTenantResolver(
@@ -94,7 +97,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             );
         });
 
-        $this->app->singleton(DefaultTenantResolver::class, function (Container $app): DefaultTenantResolver {
+        $this->app->singleton(DefaultTenantResolver::class, function (): DefaultTenantResolver {
             $value = config('sso.tenancy.default_tenant_ulid');
 
             return new DefaultTenantResolver(
@@ -102,14 +105,40 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             );
         });
 
+        $this->app->singleton(HeaderTenantResolver::class, function (): HeaderTenantResolver {
+            return new HeaderTenantResolver(
+                enabled: (bool)config('sso.tenancy.header.enabled', false),
+                headerName: Config::string('sso.tenancy.header.name', 'X-SSO-Tenant'),
+            );
+        });
+
+        $this->app->singleton(HostTenantResolver::class, function (): HostTenantResolver {
+            $mode = config('sso.tenancy.host.mode', 'host');
+            $mode = is_string($mode) && $mode !== '' ? $mode : 'host';
+
+            $baseDomain = config('sso.tenancy.host.base_domain');
+            $baseDomain = is_string($baseDomain) && trim($baseDomain) !== '' ? trim($baseDomain) : null;
+
+            return new HostTenantResolver(
+                enabled: (bool)config('sso.tenancy.host.enabled', false),
+                mode: $mode,
+                baseDomain: $baseDomain,
+            );
+        });
+
         $this->app->singleton(TenantResolver::class, function (Container $app): TenantResolver {
             /** @var array<int, TenantResolver> $resolvers */
             $resolvers = [
               $app->make(RouteParamTenantResolver::class),
+              $app->make(HeaderTenantResolver::class),
+              $app->make(HostTenantResolver::class),
               $app->make(DefaultTenantResolver::class),
             ];
 
-            return new CompositeTenantResolver($resolvers);
+            return new CompositeTenantResolver(
+                resolvers: $resolvers,
+                throwIfMissing: (bool)config('sso.tenancy.throw_if_missing', true),
+            );
         });
         $this->app->singleton(AuthAttemptService::class, DbAuthAttemptService::class);
         $this->app->singleton(DriverRegistry::class, ConfigDriverRegistry::class);

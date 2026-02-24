@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Core\Tenancy;
 
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
+use CreativeCrafts\LaravelSso\Exceptions\TenantResolutionFailed;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,7 @@ final readonly class CompositeTenantResolver implements TenantResolver
      */
     public function __construct(
         private array $resolvers,
+        private bool $throwIfMissing,
     ) {
     }
 
@@ -26,6 +28,10 @@ final readonly class CompositeTenantResolver implements TenantResolver
             if ($tenant instanceof Tenant) {
                 return $tenant;
             }
+        }
+
+        if ($this->throwIfMissing) {
+            throw TenantResolutionFailed::unableToResolve();
         }
 
         return null;
