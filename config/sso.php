@@ -22,6 +22,23 @@ return [
   'tenancy' => [
     'route_param' => 'tenant',
     'default_tenant_ulid' => env('SSO_DEFAULT_TENANT_ULID'),
+
+      // When true, failing to resolve a tenant throws TenantResolutionFailed.
+    'throw_if_missing' => env('SSO_TENANCY_THROW_IF_MISSING', true),
+
+    'header' => [
+      'enabled' => env('SSO_TENANCY_HEADER_ENABLED', false),
+      'name' => env('SSO_TENANCY_HEADER_NAME', 'X-SSO-Tenant'),
+    ],
+
+    'host' => [
+      'enabled' => env('SSO_TENANCY_HOST_ENABLED', false),
+
+        // host: match request host against tenant metadata domain(s)
+        // subdomain: parse "{tenant}.{base_domain}" and match metadata->subdomain or ulid
+      'mode' => env('SSO_TENANCY_HOST_MODE', 'host'),
+      'base_domain' => env('SSO_TENANCY_BASE_DOMAIN'),
+    ],
   ],
   'drivers' => [
     'oidc' => OidcDriver::class,

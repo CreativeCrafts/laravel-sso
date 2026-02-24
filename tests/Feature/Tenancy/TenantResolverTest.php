@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
+use CreativeCrafts\LaravelSso\Exceptions\TenantResolutionFailed;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use CreativeCrafts\LaravelSso\Tests\TestCase;
 use Illuminate\Http\Request;
@@ -12,8 +13,9 @@ use Illuminate\Support\Str;
 uses(TestCase::class);
 
 it('resolves tenant by route param ulid', function () {
-    config()?->set('sso.tenancy.route_param', 'tenant');
-    config()?->set('sso.tenancy.default_tenant_ulid', null);
+    config()->set('sso.tenancy.route_param', 'tenant');
+    config()->set('sso.tenancy.default_tenant_ulid', null);
+    config()->set('sso.tenancy.throw_if_missing', true);
 
     $tenant = Tenant::query()->create(['ulid' => (string)Str::ulid(), 'name' => 'A']);
 
@@ -25,31 +27,34 @@ it('resolves tenant by route param ulid', function () {
 
     $resolver = app(TenantResolver::class);
 
-    expect($resolver->resolve($request)?->id)->toBe($tenant->id);
+    expect($resolver->resolve($request)->id)->toBe($tenant->id);
 });
 
 it('falls back to default tenant when no route param is available', function () {
     $default = Tenant::query()->create(['ulid' => (string)Str::ulid(), 'name' => 'Default']);
 
-    config()?->set('sso.tenancy.route_param', 'tenant');
-    config()?->set('sso.tenancy.default_tenant_ulid', $default->ulid);
+    config()->set('sso.tenancy.route_param', 'tenant');
+    config()->set('sso.tenancy.default_tenant_ulid', $default->ulid);
+    config()->set('sso.tenancy.throw_if_missing', true);
 
     $request = Request::create('/sso/start', 'GET');
     $request->setRouteResolver(fn () => null);
 
     $resolver = app(TenantResolver::class);
 
-    expect($resolver->resolve($request)?->id)->toBe($default->id);
+    expect($resolver->resolve($request)->id)->toBe($default->id);
 });
 
-it('returns null when no tenant can be resolved', function () {
-    config()?->set('sso.tenancy.route_param', 'tenant');
-    config()?->set('sso.tenancy.default_tenant_ulid', null);
+it('throws an explicit exception when no tenant can be resolved', function () {
+    config()->set('sso.tenancy.route_param', 'tenant');
+    config()->set('sso.tenancy.default_tenant_ulid', null);
+    config()->set('sso.tenancy.throw_if_missing', true);
 
     $request = Request::create('/sso/start', 'GET');
     $request->setRouteResolver(fn () => null);
 
     $resolver = app(TenantResolver::class);
 
-    expect($resolver->resolve($request))->toBeNull();
+    expect(fn () => $resolver->resolve($request))
+      ->toThrow(TenantResolutionFailed::class);
 });
