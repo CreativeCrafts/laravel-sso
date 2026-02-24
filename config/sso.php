@@ -40,6 +40,21 @@ return [
       'base_domain' => env('SSO_TENANCY_BASE_DOMAIN'),
     ],
   ],
+  'guards' => [
+      // If set, overrides auth.defaults.guard when connection.guard is null.
+    'default' => env('SSO_DEFAULT_GUARD'),
+
+      // Optional allowlist. If empty/null, all configured auth guards are permitted.
+      // Example: SSO_ALLOWED_GUARDS=web,admin
+    'allowed' => array_values(
+        array_filter(
+            array_map(
+                static fn (string $v): string => trim($v),
+                explode(',', (string)env('SSO_ALLOWED_GUARDS', '')),
+            ),
+        ),
+    ),
+  ],
   'drivers' => [
     'oidc' => OidcDriver::class,
       // 'saml' => \CreativeCrafts\LaravelSso\Drivers\SamlDriver::class,
