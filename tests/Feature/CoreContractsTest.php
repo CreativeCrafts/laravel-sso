@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelSso\Core\DefaultGuardSelector;
+use CreativeCrafts\LaravelSso\Contracts\Core\GuardSelector;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
@@ -16,13 +16,16 @@ uses(TestCase::class);
 
 it('selects guard from connection with fallback', function () {
     $tenant = Tenant::query()->create(['ulid' => (string)Str::ulid()]);
-    $selector = new DefaultGuardSelector();
+    $selector = app(GuardSelector::class);
+
+    config()->set('auth.guards.web', ['driver' => 'session', 'provider' => 'users']);
+    config()->set('auth.defaults.guard', 'web');
 
     $conn = new Connection(['guard' => 'admin']);
+    config()->set('auth.guards.admin', ['driver' => 'session', 'provider' => 'users']);
     expect($selector->selectGuard($tenant, $conn))->toBe('admin');
 
     $conn = new Connection(['guard' => null]);
-    config()?->set('auth.defaults.guard', 'web');
     expect($selector->selectGuard($tenant, $conn))->toBe('web');
 });
 
