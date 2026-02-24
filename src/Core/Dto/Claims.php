@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Core\Dto;
 
+/**
+ * Canonical Claims shape shared across protocols (OIDC/SAML).
+ * @phpstan-type Normalized array<string, mixed>
+ */
 final readonly class Claims
 {
     /**
