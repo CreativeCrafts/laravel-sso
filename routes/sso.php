@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelSso\Http\Controllers\OidcCallbackController;
 use CreativeCrafts\LaravelSso\Http\Controllers\SamlAcsController;
-use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
-use Illuminate\Http\Request;
+use CreativeCrafts\LaravelSso\Http\Controllers\SamlSpMetadataController;
+use CreativeCrafts\LaravelSso\Http\Controllers\SsoRedirectController;
 use Illuminate\Support\Facades\Route;
 
 Route::group([
@@ -12,22 +13,11 @@ Route::group([
   'middleware' => config('sso.routes.middleware', ['web']),
   'as' => 'sso.',
 ], static function (): void {
-    Route::get('{tenant}/{idp}/redirect', static function (Request $request, string $tenant, string $idp) {
-        abort(501, 'SSO redirect endpoint not implemented yet.');
-    })->name('redirect');
+    Route::get('{tenant}/{idp}/redirect', SsoRedirectController::class)->name('redirect');
 
-    Route::get('{tenant}/{idp}/callback', static function (Request $request, string $tenant, string $idp) {
-        abort(501, 'OIDC callback endpoint not implemented yet.');
-    })->name('oidc.callback');
+    Route::get('{tenant}/{idp}/callback', OidcCallbackController::class)->name('oidc.callback');
 
-    Route::post('{tenant}/{idp}/acs', static function (Request $request, string $tenant, string $idp) {
-        return app(SamlAcsController::class)($request, $tenant, $idp);
-    })->name('saml.acs');
+    Route::post('{tenant}/{idp}/acs', SamlAcsController::class)->name('saml.acs');
 
-    Route::get('{tenant}/{idp}/metadata', static function (string $tenant, string $idp) {
-        $xml = app(SpMetadataGenerator::class)->generate($tenant, $idp);
-
-        return response($xml, 200)
-          ->header('Content-Type', 'application/samlmetadata+xml; charset=UTF-8');
-    })->name('saml.metadata');
+    Route::get('{tenant}/{idp}/metadata', SamlSpMetadataController::class)->name('saml.metadata');
 });
