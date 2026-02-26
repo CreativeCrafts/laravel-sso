@@ -156,6 +156,12 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+              __DIR__ . '/../resources/ui' => base_path('resources/vendor/laravel-sso/ui'),
+            ], 'sso-ui');
+        }
+
         if (config('sso.routes.enabled', true)) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/sso.php');
         }
