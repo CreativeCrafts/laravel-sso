@@ -27,25 +27,22 @@ You can publish the config file with:
 ```bash
 php artisan vendor:publish --tag="sso-config"
 ```
-
-This is the contents of the published config file:
+## Optional Admin UI (bootstrap)
+The admin UI is **optional** and disabled by default.
+Enable it in your config (or .env if you map env vars in your app):
 
 ```php
-return [
-];
+// config/sso.php
+'ui' => [
+    'enabled' => true,
+],
 ```
+The UI routes are protected by your configured middleware (default `web` + `auth`) and a gate ability (default `manageSso`).
 
-Optionally, you can publish the views using
+## Publish UI assets
 
 ```bash
-php artisan vendor:publish --tag="sso-views"
-```
-
-## Usage
-
-```php
-$laravelSso = new CreativeCrafts\LaravelSso();
-echo $laravelSso->echoPhrase('Hello, CreativeCrafts!');
+php artisan vendor:publish --tag="sso-ui"
 ```
 
 ## Testing

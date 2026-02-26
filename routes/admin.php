@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Illuminate\Http\Request;
+use CreativeCrafts\LaravelSso\Http\Controllers\Admin\SsoAdminHomeController;
 use Illuminate\Support\Facades\Route;
 
 Route::group([
@@ -17,10 +17,5 @@ Route::group([
   ),
   'as' => 'sso.ui.',
 ], static function (): void {
-    Route::get('/', static function (Request $request) {
-        // Phase 5+: this becomes Inertia::render(...) pages.
-        return response()->json([
-          'message' => 'SSO Admin UI scaffold',
-        ]);
-    })->name('home');
+    Route::get('/', SsoAdminHomeController::class)->name('home');
 });
