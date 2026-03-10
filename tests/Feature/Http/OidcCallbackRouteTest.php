@@ -6,13 +6,29 @@ use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use CreativeCrafts\LaravelSso\Tests\Fakes\Drivers\FakeOidcCallbackDriver;
+use CreativeCrafts\LaravelSso\Tests\Fixtures\User;
 use CreativeCrafts\LaravelSso\Tests\TestCase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 uses(TestCase::class);
 
-it('oidc callback endpoint returns 204 when state is valid', function () {
+it('oidc callback endpoint provisions user and redirects when state is valid', function () {
     config()->set('sso.drivers.oidc', FakeOidcCallbackDriver::class);
+
+    // Create users table and configure the auth provider for provisioning/linking.
+    if (!Schema::hasTable('users')) {
+        Schema::create('users', function ($table): void {
+            // Do not typehint the table parameter to avoid blueprint type mismatch in Pest context.
+            $table->id();
+            $table->string('name')->nullable();
+            $table->string('email')->unique();
+            $table->string('password')->nullable();
+            $table->timestamps();
+        });
+    }
+    config()->set('auth.guards.web', ['driver' => 'session', 'provider' => 'users']);
+    config()->set('auth.providers.users', ['driver' => 'eloquent', 'model' => User::class]);
 
     $tenant = Tenant::query()->create([
       'ulid' => (string)Str::ulid(),
@@ -57,5 +73,9 @@ it('oidc callback endpoint returns 204 when state is valid', function () {
 
     $resp = $this->get($callbackUrl . '?state=' . urlencode((string)$state));
 
-    $resp->assertNoContent();
+    // The callback should complete provisioning, log in the user, and redirect to the root path by default.
+    $resp->assertRedirect('/');
+
+    // Ensure the user is authenticated in the web guard after callback completion.
+    expect(auth('web')->check())->toBeTrue();
 });
