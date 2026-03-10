@@ -26,8 +26,10 @@ use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsMapper;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlMetadataParser;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\AuthAttemptRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
 use CreativeCrafts\LaravelSso\Core\BeginLoginService;
 use CreativeCrafts\LaravelSso\Core\ConfigDriverRegistry;
 use CreativeCrafts\LaravelSso\Core\DbAuthAttemptService;
@@ -55,8 +57,10 @@ use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlMetadataParser;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
+use CreativeCrafts\LaravelSso\Repositories\EloquentAuthAttemptRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentIdentityProviderRepository;
+use CreativeCrafts\LaravelSso\Repositories\EloquentTenantRepository;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Support\Facades\Config;
 use Spatie\LaravelPackageTools\Package;
@@ -76,6 +80,8 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
     {
         $this->app->singleton(IdentityProviderRepository::class, EloquentIdentityProviderRepository::class);
         $this->app->singleton(ConnectionRepository::class, EloquentConnectionRepository::class);
+        $this->app->singleton(TenantRepository::class, EloquentTenantRepository::class);
+        $this->app->singleton(AuthAttemptRepository::class, EloquentAuthAttemptRepository::class);
 
         $this->app->singleton(GuardSelector::class, DefaultGuardSelector::class);
         $this->app->singleton(ProvisioningPolicy::class, AllowProvisioningPolicy::class);
