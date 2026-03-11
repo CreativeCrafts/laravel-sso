@@ -4,77 +4,91 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Controllers;
 
-use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionConditionsValidator;
-use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
-use CreativeCrafts\LaravelSso\Exceptions\SamlAcsRequestInvalid;
+use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
+use CreativeCrafts\LaravelSso\Contracts\Core\ProvisionAndLink;
+use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\AuthAttemptRepository;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
 use Symfony\Component\HttpFoundation\Response;
 
 final readonly class SamlAcsController
 {
     public function __construct(
-        private SamlSignatureValidator $signatures,
-        private SamlAssertionConditionsValidator $conditions,
+        private TenantResolver $tenants,
+        private HandleCallback $handleCallback,
+        private ProvisionAndLink $provisionAndLink,
+        private AuthAttemptRepository $authAttempts,
     ) {
     }
 
     public function __invoke(Request $request, string $tenant, string $idp): Response
     {
-        $encoded = $request->input('SAMLResponse');
+        $tenantModel = $this->tenants->resolve($request);
 
-        if (!is_string($encoded) || $encoded === '') {
-            throw SamlAcsRequestInvalid::missingResponse();
+        if (!$tenantModel instanceof Tenant) {
+            abort(404);
         }
 
-        $xml = base64_decode($encoded, true);
+        $connectionId = (int)$idp;
 
-        if (!is_string($xml) || $xml === '') {
-            throw SamlAcsRequestInvalid::invalidBase64();
+        $callbackResult = $this->handleCallback->handle(
+            request: $request,
+            tenant: $tenantModel,
+            connectionId: $connectionId,
+        );
+
+        if (!$callbackResult->authenticated) {
+            return response('', 204);
         }
 
-        $tenantModel = Tenant::query()
-          ->where('ulid', $tenant)
-          ->firstOrFail();
+        $stateCandidates = [
+          $request->query('state'),
+          $request->input('state'),
+          $request->input('RelayState'),
+          $request->input('relay_state'),
+        ];
 
-        $identityProvider = $tenantModel
-          ->identityProviders()
-          ->whereKey((int)$idp)
-          ->firstOrFail();
+        $state = null;
 
-        /** @var array<string, mixed> $idpConfig */
-        $idpConfig = is_array($identityProvider->config) ? $identityProvider->config : [];
-
-        $rawCerts = $idpConfig['saml_signing_certs_pem'] ?? [];
-        $certs = is_array($rawCerts) ? $rawCerts : [];
-
-        $signingCertsPem = [];
-        foreach ($certs as $cert) {
-            if (is_string($cert) && $cert !== '') {
-                $signingCertsPem[] = $cert;
+        foreach ($stateCandidates as $value) {
+            if (is_string($value) && $value !== '') {
+                $state = $value;
+                break;
             }
         }
 
-        $signed = $this->signatures->validate($xml, $signingCertsPem);
+        if ($state === null) {
+            return response('', 204);
+        }
 
-        $acsUrl = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
-        $metadataUrl = route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
+        $attempt = $this->authAttempts->findByState($tenantModel, $state);
 
-        $entityId = config('sso.saml.sp.entity_id');
-        $expectedAudience = is_string($entityId) && $entityId !== '' ? $entityId : $metadataUrl;
+        $redirectTo = '/';
 
-        $this->conditions->validate(
-            signed: $signed,
-            expectedAudience: $expectedAudience,
-            expectedRecipient: $acsUrl,
-            expectedDestination: $acsUrl,
-            clockSkewSeconds: Config::integer('sso.saml.clock_skew_seconds', 60),
-            requireAudience: (bool)config('sso.saml.require_audience', true),
-            requireRecipient: (bool)config('sso.saml.require_recipient', true),
-            requireDestination: (bool)config('sso.saml.require_destination', true),
+        if ($attempt !== null) {
+            $redirect = $attempt->redirect_to;
+
+            if (is_string($redirect) && $redirect !== '') {
+                if (str_starts_with($redirect, '/')) {
+                    $redirectTo = $redirect;
+                } elseif (filter_var($redirect, FILTER_VALIDATE_URL) !== false) {
+                    $currentHost = $request->getSchemeAndHttpHost();
+
+                    if (str_starts_with($redirect, $currentHost)) {
+                        $redirectTo = $redirect;
+                    }
+                }
+            }
+        }
+
+        $this->provisionAndLink->handle(
+            request: $request,
+            tenant: $tenantModel,
+            connectionId: $connectionId,
+            callback: $callbackResult,
         );
 
-        return response('', 204);
+        return redirect()->to($redirectTo);
     }
 }

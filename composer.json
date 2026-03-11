@@ -29,7 +29,8 @@
     "illuminate/database": "^12.0",
     "illuminate/support": "^12.0",
     "robrichards/xmlseclibs": "^3.1.4",
-    "spatie/laravel-package-tools": "^1.93"
+    "spatie/laravel-package-tools": "^1.93",
+    "ext-zlib": "*"
   },
   "require-dev": {
     "laravel/pint": "^1.27",

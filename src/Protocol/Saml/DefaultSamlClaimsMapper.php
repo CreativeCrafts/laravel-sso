@@ -18,7 +18,7 @@ final class DefaultSamlClaimsMapper implements SamlClaimsMapper
             throw SamlClaimsNormalizationFailed::missingNameId();
         }
 
-        $email = $this->firstAttributeValue($attributes, [
+        $emailKeys = $this->mappingKeys('email', [
           'email',
           'mail',
           'EmailAddress',
@@ -27,22 +27,43 @@ final class DefaultSamlClaimsMapper implements SamlClaimsMapper
           'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
         ]);
 
-        $displayName = $this->firstAttributeValue($attributes, [
+        $displayNameKeys = $this->mappingKeys('display_name', [
           'name',
           'displayName',
           'cn',
           'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name',
         ]);
 
-        if ($displayName === null) {
-            $given = $this->firstAttributeValue($attributes, ['givenName', 'firstName']);
-            $sn = $this->firstAttributeValue($attributes, ['sn', 'surname', 'lastName']);
+        $givenNameKeys = $this->mappingKeys('given_name', [
+          'givenName',
+          'firstName',
+        ]);
 
-            $computed = trim(implode(' ', array_filter([$given, $sn], static fn ($v): bool => is_string($v) && $v !== '')));
+        $surnameKeys = $this->mappingKeys('surname', [
+          'sn',
+          'surname',
+          'lastName',
+        ]);
+
+        $groupKeys = $this->mappingKeys('groups', [
+          'groups',
+          'memberOf',
+          'roles',
+          'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
+        ]);
+
+        $email = $this->firstAttributeValue($attributes, $emailKeys);
+        $displayName = $this->firstAttributeValue($attributes, $displayNameKeys);
+
+        if ($displayName === null) {
+            $given = $this->firstAttributeValue($attributes, $givenNameKeys);
+            $surname = $this->firstAttributeValue($attributes, $surnameKeys);
+
+            $computed = trim(implode(' ', array_filter([$given, $surname], static fn ($value): bool => is_string($value) && $value !== '')));
             $displayName = $computed !== '' ? $computed : null;
         }
 
-        $groups = $this->groups($attributes);
+        $groups = $this->groups($attributes, $groupKeys);
 
         return new Claims(
             subject: $subject,
@@ -67,14 +88,13 @@ final class DefaultSamlClaimsMapper implements SamlClaimsMapper
     {
         foreach ($keys as $key) {
             $values = $attributes[$key] ?? null;
-            if (!is_array($values)) {
-                continue;
-            }
-            if ($values === []) {
+
+            if (!is_array($values) || $values === []) {
                 continue;
             }
 
-            $value = trim($values[0]);
+            $value = trim((string)$values[0]);
+
             if ($value !== '') {
                 return $value;
             }
@@ -85,17 +105,11 @@ final class DefaultSamlClaimsMapper implements SamlClaimsMapper
 
     /**
      * @param array<string, array<int, string>> $attributes
+     * @param array<int, string> $candidateKeys
      * @return array<int, string>
      */
-    private function groups(array $attributes): array
+    private function groups(array $attributes, array $candidateKeys): array
     {
-        $candidateKeys = [
-          'groups',
-          'memberOf',
-          'roles',
-          'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
-        ];
-
         $values = [];
 
         foreach ($candidateKeys as $key) {
@@ -103,34 +117,38 @@ final class DefaultSamlClaimsMapper implements SamlClaimsMapper
                 continue;
             }
 
-            foreach ($attributes[$key] as $v) {
-                $v = trim($v);
-                if ($v === '') {
+            foreach ($attributes[$key] as $value) {
+                $value = trim((string)$value);
+
+                if ($value === '') {
                     continue;
                 }
 
-                // Split commonly delimited formats while preserving single DN values.
-                if (str_contains($v, ';')) {
-                    foreach (explode(';', $v) as $p) {
-                        $p = trim($p);
-                        if ($p !== '') {
-                            $values[] = $p;
+                if (str_contains($value, ';')) {
+                    foreach (explode(';', $value) as $part) {
+                        $part = trim($part);
+
+                        if ($part !== '') {
+                            $values[] = $part;
                         }
                     }
+
                     continue;
                 }
 
-                if (str_contains($v, ',') && !str_contains($v, '=')) {
-                    foreach (explode(',', $v) as $p) {
-                        $p = trim($p);
-                        if ($p !== '') {
-                            $values[] = $p;
+                if (str_contains($value, ',') && !str_contains($value, '=')) {
+                    foreach (explode(',', $value) as $part) {
+                        $part = trim($part);
+
+                        if ($part !== '') {
+                            $values[] = $part;
                         }
                     }
+
                     continue;
                 }
 
-                $values[] = $v;
+                $values[] = $value;
             }
 
             if ($values !== []) {
@@ -139,5 +157,36 @@ final class DefaultSamlClaimsMapper implements SamlClaimsMapper
         }
 
         return array_values(array_unique($values));
+    }
+
+    /**
+     * @param array<int, string> $default
+     * @return array<int, string>
+     */
+    private function mappingKeys(string $key, array $default): array
+    {
+        $raw = config('sso.saml.attribute_mapping.' . $key);
+
+        if (!is_array($raw)) {
+            return $default;
+        }
+
+        $keys = [];
+
+        foreach ($raw as $value) {
+            if (!is_string($value)) {
+                continue;
+            }
+
+            $value = trim($value);
+
+            if ($value === '') {
+                continue;
+            }
+
+            $keys[] = $value;
+        }
+
+        return $keys === [] ? $default : array_values(array_unique($keys));
     }
 }
