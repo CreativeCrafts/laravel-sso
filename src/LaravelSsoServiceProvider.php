@@ -43,8 +43,8 @@ use CreativeCrafts\LaravelSso\Core\Tenancy\DefaultTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\HeaderTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\HostTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\RouteParamTenantResolver;
-use CreativeCrafts\LaravelSso\Policies\AllowIdentityLinkPolicy;
-use CreativeCrafts\LaravelSso\Policies\AllowProvisioningPolicy;
+use CreativeCrafts\LaravelSso\Policies\DefaultIdentityLinkPolicy;
+use CreativeCrafts\LaravelSso\Policies\DefaultProvisioningPolicy;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcDiscovery;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcJwksFetcher;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcClaimsNormalizer;
@@ -84,8 +84,8 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(AuthAttemptRepository::class, EloquentAuthAttemptRepository::class);
 
         $this->app->singleton(GuardSelector::class, DefaultGuardSelector::class);
-        $this->app->singleton(ProvisioningPolicy::class, AllowProvisioningPolicy::class);
-        $this->app->singleton(IdentityLinkPolicy::class, AllowIdentityLinkPolicy::class);
+        $this->app->singleton(ProvisioningPolicy::class, DefaultProvisioningPolicy::class);
+        $this->app->singleton(IdentityLinkPolicy::class, DefaultIdentityLinkPolicy::class);
 
         $this->app->singleton(SamlMetadataParser::class, DefaultSamlMetadataParser::class);
         $this->app->singleton(SpMetadataGenerator::class);
@@ -113,7 +113,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
         $this->app->singleton(HeaderTenantResolver::class, function (): HeaderTenantResolver {
             return new HeaderTenantResolver(
-                enabled: (bool)config('sso.tenancy.header.enabled', false),
+                enabled: (bool) config('sso.tenancy.header.enabled', false),
                 headerName: Config::string('sso.tenancy.header.name', 'X-SSO-Tenant'),
             );
         });
@@ -126,7 +126,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             $baseDomain = is_string($baseDomain) && trim($baseDomain) !== '' ? trim($baseDomain) : null;
 
             return new HostTenantResolver(
-                enabled: (bool)config('sso.tenancy.host.enabled', false),
+                enabled: (bool) config('sso.tenancy.host.enabled', false),
                 mode: $mode,
                 baseDomain: $baseDomain,
             );
@@ -143,7 +143,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
             return new CompositeTenantResolver(
                 resolvers: $resolvers,
-                throwIfMissing: (bool)config('sso.tenancy.throw_if_missing', true),
+                throwIfMissing: (bool) config('sso.tenancy.throw_if_missing', true),
             );
         });
         $this->app->singleton(AuthAttemptService::class, DbAuthAttemptService::class);
