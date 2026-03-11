@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelSso\Drivers\OidcDriver;
+use CreativeCrafts\LaravelSso\Drivers\SamlDriver;
 
 return [
   'enabled' => env('SSO_ENABLED', true),
@@ -19,6 +20,7 @@ return [
     'middleware' => ['web', 'auth'],
     'gate' => env('SSO_UI_GATE', 'manageSso'),
   ],
+
   'tenancy' => [
     'route_param' => 'tenant',
     'default_tenant_ulid' => env('SSO_DEFAULT_TENANT_ULID'),
@@ -40,6 +42,7 @@ return [
       'base_domain' => env('SSO_TENANCY_BASE_DOMAIN'),
     ],
   ],
+
   'guards' => [
       // If set, overrides auth.defaults.guard when connection.guard is null.
     'default' => env('SSO_DEFAULT_GUARD'),
@@ -55,20 +58,24 @@ return [
         ),
     ),
   ],
+
   'drivers' => [
     'oidc' => OidcDriver::class,
-      // 'saml' => \CreativeCrafts\LaravelSso\Drivers\SamlDriver::class,
+    'saml' => SamlDriver::class,
   ],
+
   'attempts' => [
     'ttl_seconds' => (int)env('SSO_ATTEMPT_TTL_SECONDS', 600),
     'state_length' => (int)env('SSO_STATE_LENGTH', 64),
     'nonce_length' => (int)env('SSO_NONCE_LENGTH', 64),
     'code_verifier_length' => (int)env('SSO_CODE_VERIFIER_LENGTH', 96),
   ],
+
   'provisioning' => [
     'email_column' => env('SSO_USER_EMAIL_COLUMN', 'email'),
     'name_column' => env('SSO_USER_NAME_COLUMN', 'name'),
   ],
+
   'oidc' => [
     'discovery' => [
       'enabled_default' => env('SSO_OIDC_DISCOVERY_ENABLED', true),
@@ -87,15 +94,50 @@ return [
       'jwks_http_timeout_seconds' => env('SSO_OIDC_JWKS_HTTP_TIMEOUT', 10),
     ],
   ],
+
   'saml' => [
     'clock_skew_seconds' => (int)env('SSO_SAML_CLOCK_SKEW_SECONDS', 60),
 
     'require_destination' => env('SSO_SAML_REQUIRE_DESTINATION', true),
     'require_audience' => env('SSO_SAML_REQUIRE_AUDIENCE', true),
     'require_recipient' => env('SSO_SAML_REQUIRE_RECIPIENT', true),
+
+    'attribute_mapping' => [
+      'email' => [
+        'email',
+        'mail',
+        'EmailAddress',
+        'upn',
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress',
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/upn',
+      ],
+      'display_name' => [
+        'name',
+        'displayName',
+        'cn',
+        'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name',
+      ],
+      'given_name' => [
+        'givenName',
+        'firstName',
+      ],
+      'surname' => [
+        'sn',
+        'surname',
+        'lastName',
+      ],
+      'groups' => [
+        'groups',
+        'memberOf',
+        'roles',
+        'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
+      ],
+    ],
+
     'sp' => [
         // Optional override. If null, we default entityID to the metadata URL.
       'entity_id' => env('SSO_SAML_SP_ENTITY_ID'),
+
         // Binding for ACS endpoint in generated metadata.
       'acs_binding' => env('SSO_SAML_SP_ACS_BINDING', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'),
     ],
