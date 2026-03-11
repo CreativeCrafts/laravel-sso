@@ -28,35 +28,35 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
     config()->set('auth.providers.users', ['driver' => 'eloquent', 'model' => User::class]);
 
     $tenant = Tenant::query()->create([
-      'ulid' => (string) Str::ulid(),
-      'name' => 'Tenant Replay',
+        'ulid' => (string) Str::ulid(),
+        'name' => 'Tenant Replay',
     ]);
 
     $keys = SamlTestXmlFactory::generateRsaCertPair();
 
     $idp = IdentityProvider::query()->create([
-      'tenant_id' => $tenant->id,
-      'name' => 'SAML IdP',
-      'protocol' => 'saml',
-      'enabled' => true,
-      'config' => [
-        'saml_sso_url' => 'https://idp.example.test/sso',
-        'saml_signing_certs_pem' => [$keys['public_cert_pem']],
-      ],
+        'tenant_id' => $tenant->id,
+        'name' => 'SAML IdP',
+        'protocol' => 'saml',
+        'enabled' => true,
+        'config' => [
+            'saml_sso_url' => 'https://idp.example.test/sso',
+            'saml_signing_certs_pem' => [$keys['public_cert_pem']],
+        ],
     ]);
 
     $connection = Connection::query()->create([
-      'tenant_id' => $tenant->id,
-      'identity_provider_id' => $idp->id,
-      'name' => 'Default',
-      'enabled' => true,
-      'guard' => 'web',
-      'settings' => [],
+        'tenant_id' => $tenant->id,
+        'identity_provider_id' => $idp->id,
+        'name' => 'Default',
+        'enabled' => true,
+        'guard' => 'web',
+        'settings' => ['allow_provisioning' => true],
     ]);
 
     $redirectResponse = $this->get(route('sso.redirect', [
-      'tenant' => $tenant->ulid,
-      'idp' => (string) $connection->id,
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -68,13 +68,13 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
     expect($relayState)->toBeString()->not->toBe('');
 
     $acsUrl = route('sso.saml.acs', [
-      'tenant' => $tenant->ulid,
-      'idp' => (string) $connection->id,
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
     ], true);
 
     $audience = route('sso.saml.metadata', [
-      'tenant' => $tenant->ulid,
-      'idp' => (string) $connection->id,
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
     ], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
@@ -94,21 +94,21 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
     );
 
     $firstResponse = $this->post(route('sso.saml.acs', [
-      'tenant' => $tenant->ulid,
-      'idp' => (string) $connection->id,
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
     ]), [
-      'SAMLResponse' => base64_encode($xml),
-      'RelayState' => (string) $relayState,
+        'SAMLResponse' => base64_encode($xml),
+        'RelayState' => (string) $relayState,
     ]);
 
     $firstResponse->assertRedirect('/');
 
     $secondResponse = $this->post(route('sso.saml.acs', [
-      'tenant' => $tenant->ulid,
-      'idp' => (string) $connection->id,
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
     ]), [
-      'SAMLResponse' => base64_encode($xml),
-      'RelayState' => (string) $relayState,
+        'SAMLResponse' => base64_encode($xml),
+        'RelayState' => (string) $relayState,
     ]);
 
     $secondResponse->assertStatus(500);

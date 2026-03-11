@@ -34,40 +34,39 @@ beforeEach(function () {
     config()->set('auth.guards.admin', ['driver' => 'session', 'provider' => 'users']);
     config()->set('auth.defaults.guard', 'web');
 
-    // Allow both guards explicitly for this test.
     config()->set('sso.guards.allowed', ['web', 'admin']);
 });
 
 it('logs in using the guard configured on the connection', function () {
-    $tenant = Tenant::query()->create(['ulid' => (string)Str::ulid(), 'name' => 'T1']);
+    $tenant = Tenant::query()->create(['ulid' => (string) Str::ulid(), 'name' => 'T1']);
 
     $idp = IdentityProvider::query()->create([
-      'tenant_id' => $tenant->id,
-      'name' => 'Okta',
-      'protocol' => 'oidc',
-      'enabled' => true,
-      'config' => [],
+        'tenant_id' => $tenant->id,
+        'name' => 'Okta',
+        'protocol' => 'oidc',
+        'enabled' => true,
+        'config' => [],
     ]);
 
     $webConnection = Connection::query()->create([
-      'tenant_id' => $tenant->id,
-      'identity_provider_id' => $idp->id,
-      'name' => 'Web',
-      'enabled' => true,
-      'guard' => 'web',
-      'settings' => [],
+        'tenant_id' => $tenant->id,
+        'identity_provider_id' => $idp->id,
+        'name' => 'Web',
+        'enabled' => true,
+        'guard' => 'web',
+        'settings' => ['allow_provisioning' => true],
     ]);
 
     $adminConnection = Connection::query()->create([
-      'tenant_id' => $tenant->id,
-      'identity_provider_id' => $idp->id,
-      'name' => 'Admin',
-      'enabled' => true,
-      'guard' => 'admin',
-      'settings' => [],
+        'tenant_id' => $tenant->id,
+        'identity_provider_id' => $idp->id,
+        'name' => 'Admin',
+        'enabled' => true,
+        'guard' => 'admin',
+        'settings' => ['allow_provisioning' => true],
     ]);
 
-    $svc = app(ProvisionAndLink::class);
+    $service = app(ProvisionAndLink::class);
     $request = Request::create('/sso/callback', 'GET');
 
     $canonical = new Claims(
@@ -77,12 +76,12 @@ it('logs in using the guard configured on the connection', function () {
         emailVerified: null,
         groups: [],
         normalized: [
-        'sub' => 'sub-guard',
-        'email' => 'user@example.test',
-        'name' => 'User One',
-        'email_verified' => null,
-        'groups' => [],
-      ],
+            'sub' => 'sub-guard',
+            'email' => 'user@example.test',
+            'name' => 'User One',
+            'email_verified' => null,
+            'groups' => [],
+        ],
     );
 
     $callback = new DriverCallbackResult(
@@ -94,19 +93,17 @@ it('logs in using the guard configured on the connection', function () {
         claims: $canonical->toArray(),
     );
 
-    // Connection -> web guard
-    $svc->handle($request, $tenant, $webConnection->id, $callback);
+    $service->handle($request, $tenant, $webConnection->id, $callback);
 
     expect(auth('web')->check())
-      ->toBeTrue()
-      ->and(auth('admin')->check())->toBeFalse();
+        ->toBeTrue()
+        ->and(auth('admin')->check())->toBeFalse();
 
     auth('web')->logout();
 
-    // Connection -> admin guard
-    $svc->handle($request, $tenant, $adminConnection->id, $callback);
+    $service->handle($request, $tenant, $adminConnection->id, $callback);
 
     expect(auth('admin')->check())
-      ->toBeTrue()
-      ->and(auth('web')->check())->toBeFalse();
+        ->toBeTrue()
+        ->and(auth('web')->check())->toBeFalse();
 });

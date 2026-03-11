@@ -27,6 +27,44 @@ You can publish the config file with:
 ```bash
 php artisan vendor:publish --tag="sso-config"
 ```
+## Provisioning and identity-linking policies
+Provisioning and identity linking are **deny-by-default.**
+
+A successful OIDC or SAML callback only creates or links a local user when one of the following is true:
+1.	the host application binds its own ProvisioningPolicy / IdentityLinkPolicy,
+2.	package-wide defaults are enabled in config/sso.php, or
+3.	the connection explicitly opts in through sso_connections.settings.
+
+## Package-wide defaults
+```php
+'provisioning' => [
+    'enabled_by_default' => false,
+],
+
+'linking' => [
+    'enabled_by_default' => false,
+],
+```
+Set either value to true only when that behavior is acceptable for your application.
+
+## Per-connection overrides
+Connection settings take precedence over package defaults.
+```php
+$connection->settings = [
+    'allow_provisioning' => true,
+    'allow_identity_linking' => true,
+];
+```
+This makes it possible to allow automatic provisioning or linking for one identity provider while denying it for another within the same tenant.
+
+## Explicit allow policies
+
+The package still ships permissive policy implementations for host applications that want to opt in globally:
+- CreativeCrafts\LaravelSso\Policies\AllowProvisioningPolicy
+- CreativeCrafts\LaravelSso\Policies\AllowIdentityLinkPolicy
+
+Bind them explicitly in your application service provider if you want that behavior.
+
 ## Optional Admin UI (bootstrap)
 The admin UI is **optional** and disabled by default.
 Enable it in your config (or .env if you map env vars in your app):

@@ -13,13 +13,11 @@ use Illuminate\Support\Str;
 
 uses(TestCase::class);
 
-it('oidc callback endpoint provisions user and redirects when state is valid', function () {
+beforeEach(function () {
     config()->set('sso.drivers.oidc', FakeOidcCallbackDriver::class);
 
-    // Create users table and configure the auth provider for provisioning/linking.
     if (!Schema::hasTable('users')) {
         Schema::create('users', function ($table): void {
-            // Do not typehint the table parameter to avoid blueprint type mismatch in Pest context.
             $table->id();
             $table->string('name')->nullable();
             $table->string('email')->unique();
@@ -27,55 +25,101 @@ it('oidc callback endpoint provisions user and redirects when state is valid', f
             $table->timestamps();
         });
     }
+
     config()->set('auth.guards.web', ['driver' => 'session', 'provider' => 'users']);
     config()->set('auth.providers.users', ['driver' => 'eloquent', 'model' => User::class]);
+});
 
+it('oidc callback endpoint provisions user and redirects when provisioning is enabled for the connection', function () {
     $tenant = Tenant::query()->create([
-      'ulid' => (string)Str::ulid(),
-      'name' => 'T1',
+        'ulid' => (string) Str::ulid(),
+        'name' => 'T1',
     ]);
 
     $idp = IdentityProvider::query()->create([
-      'tenant_id' => $tenant->id,
-      'name' => 'OIDC',
-      'protocol' => 'oidc',
-      'enabled' => true,
-      'config' => [],
+        'tenant_id' => $tenant->id,
+        'name' => 'OIDC',
+        'protocol' => 'oidc',
+        'enabled' => true,
+        'config' => [],
     ]);
 
     $connection = Connection::query()->create([
-      'tenant_id' => $tenant->id,
-      'identity_provider_id' => $idp->id,
-      'name' => 'Default',
-      'enabled' => true,
-      'settings' => [],
+        'tenant_id' => $tenant->id,
+        'identity_provider_id' => $idp->id,
+        'name' => 'Default',
+        'enabled' => true,
+        'settings' => ['allow_provisioning' => true],
     ]);
 
-    // Create an attempt by hitting redirect endpoint once; parse state from Location.
     $redirectUrl = route('sso.redirect', [
-      'tenant' => $tenant->ulid,
-      'idp' => (string)$connection->id,
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
     ]);
 
-    $redirectResp = $this->get($redirectUrl);
-    $redirectResp->assertStatus(302);
+    $redirectResponse = $this->get($redirectUrl);
+    $redirectResponse->assertStatus(302);
 
-    $location = (string)$redirectResp->headers->get('Location');
-    parse_str((string)parse_url($location, PHP_URL_QUERY), $query);
+    $location = (string) $redirectResponse->headers->get('Location');
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
     $state = $query['state'] ?? null;
     expect($state)->toBeString()->not->toBeEmpty();
 
     $callbackUrl = route('sso.oidc.callback', [
-      'tenant' => $tenant->ulid,
-      'idp' => (string)$connection->id,
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
     ]);
 
-    $resp = $this->get($callbackUrl . '?state=' . urlencode((string)$state));
+    $response = $this->get($callbackUrl . '?state=' . urlencode((string) $state));
 
-    // The callback should complete provisioning, log in the user, and redirect to the root path by default.
-    $resp->assertRedirect('/');
-
-    // Ensure the user is authenticated in the web guard after callback completion.
+    $response->assertRedirect('/');
     expect(auth('web')->check())->toBeTrue();
+});
+
+it('oidc callback endpoint fails when provisioning is denied by default', function () {
+    $tenant = Tenant::query()->create([
+        'ulid' => (string) Str::ulid(),
+        'name' => 'T1',
+    ]);
+
+    $idp = IdentityProvider::query()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'OIDC',
+        'protocol' => 'oidc',
+        'enabled' => true,
+        'config' => [],
+    ]);
+
+    $connection = Connection::query()->create([
+        'tenant_id' => $tenant->id,
+        'identity_provider_id' => $idp->id,
+        'name' => 'Default',
+        'enabled' => true,
+        'settings' => [],
+    ]);
+
+    $redirectUrl = route('sso.redirect', [
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
+    ]);
+
+    $redirectResponse = $this->get($redirectUrl);
+    $redirectResponse->assertStatus(302);
+
+    $location = (string) $redirectResponse->headers->get('Location');
+    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+    $state = $query['state'] ?? null;
+    expect($state)->toBeString()->not->toBeEmpty();
+
+    $callbackUrl = route('sso.oidc.callback', [
+        'tenant' => $tenant->ulid,
+        'idp' => (string) $connection->id,
+    ]);
+
+    $response = $this->get($callbackUrl . '?state=' . urlencode((string) $state));
+
+    $response->assertStatus(500);
+    expect(auth('web')->check())->toBeFalse();
 });
