@@ -11,8 +11,12 @@ use CreativeCrafts\LaravelSso\Contracts\Core\UserProvisioner;
 use CreativeCrafts\LaravelSso\Contracts\Policies\IdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\ExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
+use CreativeCrafts\LaravelSso\Events\IdentityLinked;
+use CreativeCrafts\LaravelSso\Events\LoginCompleted;
+use CreativeCrafts\LaravelSso\Events\UserProvisioned;
 use CreativeCrafts\LaravelSso\Exceptions\IdentityLinkDenied;
 use CreativeCrafts\LaravelSso\Exceptions\MissingExternalSubject;
 use CreativeCrafts\LaravelSso\Exceptions\ProvisioningDenied;
@@ -23,6 +27,7 @@ use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use RuntimeException;
 
@@ -31,12 +36,14 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
     public function __construct(
         private ConnectionRepository $connections,
         private IdentityProviderRepository $identityProviders,
+        private ExternalIdentityRepository $externalIdentities,
         private GuardSelector $guards,
         private UserLocator $users,
         private UserProvisioner $provisioner,
         private ProvisioningPolicy $provisioningPolicy,
         private IdentityLinkPolicy $identityLinkPolicy,
         private AuthFactory $auth,
+        private Dispatcher $events,
     ) {
     }
 
@@ -52,7 +59,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             throw TenantScopedRecordNotFound::for(Connection::class, $connectionId);
         }
 
-        $identityProviderId = (int)$connection->identity_provider_id;
+        $identityProviderId = (int) $connection->identity_provider_id;
 
         $identityProvider = $this->identityProviders->findForTenant($tenant, $identityProviderId);
 
@@ -73,11 +80,11 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
         $guard = $this->guards->selectGuard($tenant, $connection);
 
-        $existingExternal = ExternalIdentity::query()
-          ->where('tenant_id', $tenant->id)
-          ->where('identity_provider_id', $identityProvider->id)
-          ->where('provider_subject', $subject)
-          ->first();
+        $existingExternal = $this->externalIdentities->findForTenantIdentityProviderAndSubject(
+            tenant: $tenant,
+            identityProvider: $identityProvider,
+            subject: $subject,
+        );
 
         if ($existingExternal instanceof ExternalIdentity) {
             $linked = $existingExternal->authenticatable;
@@ -95,6 +102,16 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
                 $this->auth->guard($guard)->login($linked);
 
+                $this->events->dispatch(new LoginCompleted(
+                    request: $request,
+                    tenant: $tenant,
+                    connection: $connection,
+                    identityProvider: $identityProvider,
+                    user: $linked,
+                    guard: $guard,
+                    callback: $callback,
+                ));
+
                 return $linked;
             }
         }
@@ -110,7 +127,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
                 throw IdentityLinkDenied::make();
             }
 
-            $this->upsertExternalIdentityForUser(
+            $externalIdentity = $this->upsertExternalIdentityForUser(
                 tenant: $tenant,
                 identityProvider: $identityProvider,
                 subject: $subject,
@@ -120,7 +137,30 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
                 user: $user,
             );
 
+            if ($externalIdentity->wasRecentlyCreated) {
+                $this->events->dispatch(new IdentityLinked(
+                    request: $request,
+                    tenant: $tenant,
+                    connection: $connection,
+                    identityProvider: $identityProvider,
+                    externalIdentity: $externalIdentity,
+                    user: $user,
+                    guard: $guard,
+                    callback: $callback,
+                ));
+            }
+
             $this->auth->guard($guard)->login($user);
+
+            $this->events->dispatch(new LoginCompleted(
+                request: $request,
+                tenant: $tenant,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                user: $user,
+                guard: $guard,
+                callback: $callback,
+            ));
 
             return $user;
         }
@@ -135,7 +175,17 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
         $user = $this->provisioner->provision($guard, $email, $displayName, $claims);
 
-        $this->upsertExternalIdentityForUser(
+        $this->events->dispatch(new UserProvisioned(
+            request: $request,
+            tenant: $tenant,
+            connection: $connection,
+            identityProvider: $identityProvider,
+            user: $user,
+            guard: $guard,
+            callback: $callback,
+        ));
+
+        $externalIdentity = $this->upsertExternalIdentityForUser(
             tenant: $tenant,
             identityProvider: $identityProvider,
             subject: $subject,
@@ -145,7 +195,30 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             user: $user,
         );
 
+        if ($externalIdentity->wasRecentlyCreated) {
+            $this->events->dispatch(new IdentityLinked(
+                request: $request,
+                tenant: $tenant,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                externalIdentity: $externalIdentity,
+                user: $user,
+                guard: $guard,
+                callback: $callback,
+            ));
+        }
+
         $this->auth->guard($guard)->login($user);
+
+        $this->events->dispatch(new LoginCompleted(
+            request: $request,
+            tenant: $tenant,
+            connection: $connection,
+            identityProvider: $identityProvider,
+            user: $user,
+            guard: $guard,
+            callback: $callback,
+        ));
 
         return $user;
     }
@@ -161,30 +234,30 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         ?string $displayName,
         array $claims,
         Authenticatable $user,
-    ): void {
+    ): ExternalIdentity {
         $authIdentifier = $user->getAuthIdentifier();
 
         if (is_int($authIdentifier)) {
-            $authenticatableId = (string)$authIdentifier;
+            $authenticatableId = (string) $authIdentifier;
         } elseif (is_string($authIdentifier) && $authIdentifier !== '') {
             $authenticatableId = $authIdentifier;
         } else {
             throw new RuntimeException('Authenticatable identifier must be a non-empty string or int.');
         }
 
-        ExternalIdentity::query()->updateOrCreate(
+        return ExternalIdentity::query()->updateOrCreate(
             [
-            'tenant_id' => $tenant->id,
-            'identity_provider_id' => $identityProvider->id,
-            'provider_subject' => $subject,
-          ],
+                'tenant_id' => $tenant->id,
+                'identity_provider_id' => $identityProvider->id,
+                'provider_subject' => $subject,
+            ],
             [
-            'email' => $email,
-            'display_name' => $displayName,
-            'claims' => $claims,
-            'authenticatable_type' => $user::class,
-            'authenticatable_id' => $authenticatableId,
-          ],
+                'email' => $email,
+                'display_name' => $displayName,
+                'claims' => $claims,
+                'authenticatable_type' => $user::class,
+                'authenticatable_id' => $authenticatableId,
+            ],
         );
     }
 }

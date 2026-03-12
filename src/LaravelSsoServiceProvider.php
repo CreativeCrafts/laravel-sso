@@ -28,6 +28,7 @@ use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlMetadataParser;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\AuthAttemptRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\ExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
 use CreativeCrafts\LaravelSso\Core\BeginLoginService;
@@ -59,6 +60,7 @@ use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
 use CreativeCrafts\LaravelSso\Repositories\EloquentAuthAttemptRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
+use CreativeCrafts\LaravelSso\Repositories\EloquentExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentIdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentTenantRepository;
 use Illuminate\Contracts\Container\Container;
@@ -82,6 +84,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(ConnectionRepository::class, EloquentConnectionRepository::class);
         $this->app->singleton(TenantRepository::class, EloquentTenantRepository::class);
         $this->app->singleton(AuthAttemptRepository::class, EloquentAuthAttemptRepository::class);
+        $this->app->singleton(ExternalIdentityRepository::class, EloquentExternalIdentityRepository::class);
 
         $this->app->singleton(GuardSelector::class, DefaultGuardSelector::class);
         $this->app->singleton(ProvisioningPolicy::class, DefaultProvisioningPolicy::class);

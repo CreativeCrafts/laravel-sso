@@ -10,6 +10,8 @@ use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
+use CreativeCrafts\LaravelSso\Events\CallbackFailed;
+use CreativeCrafts\LaravelSso\Events\CallbackSucceeded;
 use CreativeCrafts\LaravelSso\Exceptions\CallbackStateMissing;
 use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
@@ -17,6 +19,7 @@ use CreativeCrafts\LaravelSso\Models\AuditLog;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
 use Throwable;
 
@@ -28,6 +31,7 @@ final readonly class HandleCallbackService implements HandleCallback
         private AuthAttemptService $attempts,
         private DriverRegistry $drivers,
         private AuditContextSanitizer $auditContexts,
+        private Dispatcher $events,
     ) {
     }
 
@@ -87,6 +91,15 @@ final readonly class HandleCallbackService implements HandleCallback
                 context: $this->auditContexts->sanitizeSuccess($protocol, $result),
             );
 
+            $this->events->dispatch(new CallbackSucceeded(
+                request: $request,
+                tenant: $tenant,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                attempt: $attempt,
+                result: $result,
+            ));
+
             return $result;
         } catch (Throwable $e) {
             $this->auditFailed(
@@ -100,6 +113,17 @@ final readonly class HandleCallbackService implements HandleCallback
                     protocol: $protocol ?? $attempt?->protocol,
                 ),
             );
+
+            $this->events->dispatch(new CallbackFailed(
+                request: $request,
+                tenant: $tenant,
+                connectionId: $connectionId,
+                attempt: $attempt,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                protocol: $protocol ?? $attempt?->protocol,
+                exception: $e,
+            ));
 
             throw $e;
         }
