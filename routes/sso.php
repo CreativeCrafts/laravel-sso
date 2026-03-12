@@ -9,15 +9,15 @@ use CreativeCrafts\LaravelSso\Http\Controllers\SsoRedirectController;
 use Illuminate\Support\Facades\Route;
 
 Route::group([
-  'prefix' => config('sso.routes.prefix', 'sso'),
-  'middleware' => config('sso.routes.middleware', ['web']),
-  'as' => 'sso.',
+    'prefix' => config('sso.routes.prefix', 'sso'),
+    'middleware' => config('sso.routes.middleware', ['web']),
+    'as' => 'sso.',
 ], static function (): void {
-    Route::get('{tenant}/{idp}/redirect', SsoRedirectController::class)->name('redirect');
+    Route::get('{tenant}/{connection}/redirect', SsoRedirectController::class)->name('redirect');
 
-    Route::get('{tenant}/{idp}/callback', OidcCallbackController::class)->name('oidc.callback');
+    Route::get('{tenant}/{connection}/callback', OidcCallbackController::class)->name('oidc.callback');
 
-    Route::post('{tenant}/{idp}/acs', SamlAcsController::class)->name('saml.acs');
+    Route::post('{tenant}/{connection}/acs', SamlAcsController::class)->name('saml.acs');
 
-    Route::get('{tenant}/{idp}/metadata', SamlSpMetadataController::class)->name('saml.metadata');
+    Route::get('{tenant}/{connection}/metadata', SamlSpMetadataController::class)->name('saml.metadata');
 });

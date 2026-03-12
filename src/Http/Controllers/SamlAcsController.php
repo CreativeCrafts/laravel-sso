@@ -23,7 +23,7 @@ final readonly class SamlAcsController
     ) {
     }
 
-    public function __invoke(Request $request, string $tenant, string $idp): Response
+    public function __invoke(Request $request, string $tenant, string $connection): Response
     {
         $tenantModel = $this->tenants->resolve($request);
 
@@ -31,7 +31,7 @@ final readonly class SamlAcsController
             abort(404);
         }
 
-        $connectionId = (int)$idp;
+        $connectionId = (int) $connection;
 
         $callbackResult = $this->handleCallback->handle(
             request: $request,
@@ -44,10 +44,10 @@ final readonly class SamlAcsController
         }
 
         $stateCandidates = [
-          $request->query('state'),
-          $request->input('state'),
-          $request->input('RelayState'),
-          $request->input('relay_state'),
+            $request->query('state'),
+            $request->input('state'),
+            $request->input('RelayState'),
+            $request->input('relay_state'),
         ];
 
         $state = null;

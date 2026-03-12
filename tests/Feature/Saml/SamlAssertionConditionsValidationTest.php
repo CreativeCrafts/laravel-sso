@@ -19,10 +19,10 @@ it('accepts when audience recipient destination and time are valid', function ()
     $keys = SamlTestXmlFactory::generateRsaCertPair();
 
     $tenant = 'tenant-ulid-1';
-    $idp = '1';
+    $connection = '1';
 
-    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
-    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
+    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'connection' => $connection], true);
+    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'connection' => $connection], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
         issuer: 'https://issuer.example',
@@ -56,9 +56,9 @@ it('rejects when audience mismatches', function () {
     $keys = SamlTestXmlFactory::generateRsaCertPair();
 
     $tenant = 'tenant-ulid-2';
-    $idp = '2';
+    $connection = '2';
 
-    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
+    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'connection' => $connection], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
         issuer: 'https://issuer.example',
@@ -76,7 +76,7 @@ it('rejects when audience mismatches', function () {
 
     expect(fn () => app(SamlAssertionConditionsValidator::class)->validate(
         signed: $signed,
-        expectedAudience: route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true),
+        expectedAudience: route('sso.saml.metadata', ['tenant' => $tenant, 'connection' => $connection], true),
         expectedRecipient: $acs,
         expectedDestination: $acs,
         clockSkewSeconds: 60,
@@ -90,10 +90,10 @@ it('rejects when recipient mismatches', function () {
     $keys = SamlTestXmlFactory::generateRsaCertPair();
 
     $tenant = 'tenant-ulid-3';
-    $idp = '3';
+    $connection = '3';
 
-    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
-    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
+    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'connection' => $connection], true);
+    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'connection' => $connection], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
         issuer: 'https://issuer.example',
@@ -125,10 +125,10 @@ it('rejects when destination mismatches', function () {
     $keys = SamlTestXmlFactory::generateRsaCertPair();
 
     $tenant = 'tenant-ulid-4';
-    $idp = '4';
+    $connection = '4';
 
-    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
-    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
+    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'connection' => $connection], true);
+    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'connection' => $connection], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
         issuer: 'https://issuer.example',
@@ -160,10 +160,10 @@ it('rejects when not before is too far in the future beyond skew', function () {
     $keys = SamlTestXmlFactory::generateRsaCertPair();
 
     $tenant = 'tenant-ulid-5';
-    $idp = '5';
+    $connection = '5';
 
-    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
-    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
+    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'connection' => $connection], true);
+    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'connection' => $connection], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
         issuer: 'https://issuer.example',
@@ -195,10 +195,10 @@ it('rejects when not on or after is expired beyond skew', function () {
     $keys = SamlTestXmlFactory::generateRsaCertPair();
 
     $tenant = 'tenant-ulid-6';
-    $idp = '6';
+    $connection = '6';
 
-    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
-    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
+    $acs = route('sso.saml.acs', ['tenant' => $tenant, 'connection' => $connection], true);
+    $audience = route('sso.saml.metadata', ['tenant' => $tenant, 'connection' => $connection], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
         issuer: 'https://issuer.example',

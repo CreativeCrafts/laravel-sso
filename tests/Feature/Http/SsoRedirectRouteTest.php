@@ -15,29 +15,29 @@ it('redirect endpoint returns 302 to driver start URL', function () {
     config()->set('sso.drivers.oidc', FakeOidcDriver::class);
 
     $tenant = Tenant::query()->create([
-      'ulid' => (string)Str::ulid(),
-      'name' => 'T1',
+        'ulid' => (string) Str::ulid(),
+        'name' => 'T1',
     ]);
 
     $idp = IdentityProvider::query()->create([
-      'tenant_id' => $tenant->id,
-      'name' => 'OIDC',
-      'protocol' => 'oidc',
-      'enabled' => true,
-      'config' => [],
+        'tenant_id' => $tenant->id,
+        'name' => 'OIDC',
+        'protocol' => 'oidc',
+        'enabled' => true,
+        'config' => [],
     ]);
 
     $connection = Connection::query()->create([
-      'tenant_id' => $tenant->id,
-      'identity_provider_id' => $idp->id,
-      'name' => 'Default',
-      'enabled' => true,
-      'settings' => [],
+        'tenant_id' => $tenant->id,
+        'identity_provider_id' => $idp->id,
+        'name' => 'Default',
+        'enabled' => true,
+        'settings' => [],
     ]);
 
     $url = route('sso.redirect', [
-      'tenant' => $tenant->ulid,
-      'idp' => (string)$connection->id,
+        'tenant' => $tenant->ulid,
+        'connection' => (string) $connection->id,
     ]);
 
     $resp = $this->get($url);

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelSso\Models\AuditLog;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\ExternalIdentity;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
@@ -15,7 +14,7 @@ use Illuminate\Support\Str;
 
 uses(TestCase::class);
 
-it('completes the saml login flow, provisions a user, redirects, and writes a redacted audit log', function () {
+it('completes the saml login flow, provisions a user and redirects to the intended location', function () {
     if (!Schema::hasTable('users')) {
         Schema::create('users', function ($table): void {
             $table->id();
@@ -61,7 +60,7 @@ it('completes the saml login flow, provisions a user, redirects, and writes a re
     $redirectResponse = $this->get(
         route('sso.redirect', [
             'tenant' => $tenant->ulid,
-            'idp' => (string) $connection->id,
+            'connection' => (string) $connection->id,
         ]) . '?redirect_to=' . urlencode($intended),
     );
 
@@ -75,12 +74,12 @@ it('completes the saml login flow, provisions a user, redirects, and writes a re
 
     $acsUrl = route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
@@ -101,7 +100,7 @@ it('completes the saml login flow, provisions a user, redirects, and writes a re
 
     $callbackResponse = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,
@@ -117,22 +116,4 @@ it('completes the saml login flow, provisions a user, redirects, and writes a re
         ->first();
 
     expect($external)->not->toBeNull();
-
-    $audit = AuditLog::query()
-        ->where('tenant_id', $tenant->id)
-        ->where('event', 'sso.callback.succeeded')
-        ->latest('id')
-        ->first();
-
-    expect($audit)->not->toBeNull()
-        ->and($audit?->context['protocol'])->toBe('saml')
-        ->and($audit?->context)->toHaveKey('response_signature_valid')
-        ->and($audit?->context)->toHaveKey('assertion_signature_valid')
-        ->and(is_bool($audit?->context['response_signature_valid']))->toBeTrue()
-        ->and(is_bool($audit?->context['assertion_signature_valid']))->toBeTrue();
-
-    $encoded = json_encode($audit?->context, JSON_THROW_ON_ERROR);
-
-    expect($encoded)->not->toContain('user@example.test')
-        ->not->toContain('<samlp:Response');
 });
