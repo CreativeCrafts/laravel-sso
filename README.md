@@ -27,6 +27,53 @@ You can publish the config file with:
 ```bash
 php artisan vendor:publish --tag="sso-config"
 ```
+
+## Lifecycle events
+
+The package emits events across both the begin-login and callback lifecycle so host applications can attach telemetry, webhooks, or post-login actions without modifying package internals.
+
+**Begin-login events**
+- CreativeCrafts\LaravelSso\Events\BeginLoginRequested
+- CreativeCrafts\LaravelSso\Events\AuthAttemptCreated
+- CreativeCrafts\LaravelSso\Events\BeginLoginRedirectGenerated
+
+**Callback and completion events**
+- CreativeCrafts\LaravelSso\Events\CallbackSucceeded
+- CreativeCrafts\LaravelSso\Events\CallbackFailed
+- CreativeCrafts\LaravelSso\Events\UserProvisioned
+- CreativeCrafts\LaravelSso\Events\IdentityLinked
+- CreativeCrafts\LaravelSso\Events\LoginCompleted
+
+A typical successful first-login flow emits these callback-side events in order:
+1.	CallbackSucceeded
+2.	UserProvisioned
+3.	IdentityLinked
+4.	LoginCompleted
+
+A successful login through an existing external identity emits:
+1.	CallbackSucceeded
+2.	LoginCompleted
+
+A successful login that links an existing local user by email emits:
+1.	CallbackSucceeded
+2.	IdentityLinked
+3.	LoginCompleted
+
+**Example listener**
+```php
+use CreativeCrafts\LaravelSso\Events\LoginCompleted;
+use Illuminate\Support\Facades\Event;
+
+Event::listen(LoginCompleted::class, function (LoginCompleted $event): void {
+    $user = $event->user;
+
+    if (method_exists($user, 'forceFill')) {
+        $user->forceFill(['last_login_at' => now()])->save();
+    }
+});
+```
+These events are intended for in-process extension and observability. Persisted audit data remains redacted separately through sso_audit_logs.
+
 ## Audit logging
 Audit logging is redacted by default.
 
