@@ -13,7 +13,7 @@ use RuntimeException;
 
 final class EloquentExternalIdentityRepository implements ExternalIdentityRepository
 {
-    public function findForTenantIdentityProviderAndSubject(
+    public function findForTenantProviderAndSubject(
         Tenant $tenant,
         IdentityProvider $identityProvider,
         string $subject,

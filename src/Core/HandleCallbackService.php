@@ -7,6 +7,7 @@ namespace CreativeCrafts\LaravelSso\Core;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\AuditLogRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
@@ -15,7 +16,6 @@ use CreativeCrafts\LaravelSso\Events\CallbackSucceeded;
 use CreativeCrafts\LaravelSso\Exceptions\CallbackStateMissing;
 use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
-use CreativeCrafts\LaravelSso\Models\AuditLog;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
@@ -31,6 +31,7 @@ final readonly class HandleCallbackService implements HandleCallback
         private AuthAttemptService $attempts,
         private DriverRegistry $drivers,
         private AuditContextSanitizer $auditContexts,
+        private AuditLogRepository $auditLogs,
         private Dispatcher $events,
     ) {
     }
@@ -157,7 +158,7 @@ final readonly class HandleCallbackService implements HandleCallback
         int $authAttemptId,
         array $context,
     ): void {
-        AuditLog::query()->create([
+        $this->auditLogs->create([
             'tenant_id' => $tenant->id,
             'identity_provider_id' => $identityProvider->id,
             'connection_id' => $connection->id,
@@ -178,7 +179,7 @@ final readonly class HandleCallbackService implements HandleCallback
         ?int $authAttemptId,
         array $context,
     ): void {
-        AuditLog::query()->create([
+        $this->auditLogs->create([
             'tenant_id' => $tenant->id,
             'identity_provider_id' => $identityProviderId,
             'connection_id' => $connectionId,
