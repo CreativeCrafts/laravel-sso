@@ -216,7 +216,6 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
         $maxAttempts = Config::integer("sso.throttling.{$configKey}.max_attempts", 60);
         $decayMinutes = Config::integer("sso.throttling.{$configKey}.decay_minutes", 1);
-
         $maxAttempts = $maxAttempts > 0 ? $maxAttempts : 60;
         $decayMinutes = $decayMinutes > 0 ? $decayMinutes : 1;
 
