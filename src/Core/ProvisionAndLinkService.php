@@ -90,7 +90,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             $linked = $existingExternal->authenticatable;
 
             if ($linked instanceof Authenticatable) {
-                $this->upsertExternalIdentityForUser(
+                $this->externalIdentities->upsertForUser(
                     tenant: $tenant,
                     identityProvider: $identityProvider,
                     subject: $subject,
@@ -99,6 +99,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
                     claims: $claims,
                     user: $linked,
                 );
+
 
                 $this->auth->guard($guard)->login($linked);
 
@@ -127,7 +128,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
                 throw IdentityLinkDenied::make();
             }
 
-            $externalIdentity = $this->upsertExternalIdentityForUser(
+            $externalIdentity = $this->externalIdentities->upsertForUser(
                 tenant: $tenant,
                 identityProvider: $identityProvider,
                 subject: $subject,
@@ -185,7 +186,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             callback: $callback,
         ));
 
-        $externalIdentity = $this->upsertExternalIdentityForUser(
+        $externalIdentity = $this->externalIdentities->upsertForUser(
             tenant: $tenant,
             identityProvider: $identityProvider,
             subject: $subject,
@@ -221,43 +222,5 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         ));
 
         return $user;
-    }
-
-    /**
-     * @param array<string, mixed> $claims
-     */
-    private function upsertExternalIdentityForUser(
-        Tenant $tenant,
-        IdentityProvider $identityProvider,
-        string $subject,
-        ?string $email,
-        ?string $displayName,
-        array $claims,
-        Authenticatable $user,
-    ): ExternalIdentity {
-        $authIdentifier = $user->getAuthIdentifier();
-
-        if (is_int($authIdentifier)) {
-            $authenticatableId = (string) $authIdentifier;
-        } elseif (is_string($authIdentifier) && $authIdentifier !== '') {
-            $authenticatableId = $authIdentifier;
-        } else {
-            throw new RuntimeException('Authenticatable identifier must be a non-empty string or int.');
-        }
-
-        return ExternalIdentity::query()->updateOrCreate(
-            [
-                'tenant_id' => $tenant->id,
-                'identity_provider_id' => $identityProvider->id,
-                'provider_subject' => $subject,
-            ],
-            [
-                'email' => $email,
-                'display_name' => $displayName,
-                'claims' => $claims,
-                'authenticatable_type' => $user::class,
-                'authenticatable_id' => $authenticatableId,
-            ],
-        );
     }
 }
