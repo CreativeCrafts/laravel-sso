@@ -6,19 +6,19 @@ use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
 
 it('generates SP metadata containing entityID and ACS Location', function () {
     $tenant = 'tenant-ulid-1';
-    $idp = '1';
+    $connection = '1';
 
-    $xml = app(SpMetadataGenerator::class)->generate($tenant, $idp);
-
-    expect($xml)
-      ->toContain('EntityDescriptor')
-      ->and($xml)->toContain('SPSSODescriptor')
-      ->and($xml)->toContain('AssertionConsumerService');
-
-    $acsUrl = route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
-    $metadataUrl = route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
+    $xml = app(SpMetadataGenerator::class)->generate($tenant, $connection);
 
     expect($xml)
-      ->toContain('Location="' . $acsUrl . '"')
-      ->and($xml)->toContain('entityID="' . $metadataUrl . '"');
+        ->toContain('EntityDescriptor')
+        ->and($xml)->toContain('SPSSODescriptor')
+        ->and($xml)->toContain('AssertionConsumerService');
+
+    $acsUrl = route('sso.saml.acs', ['tenant' => $tenant, 'connection' => $connection], true);
+    $metadataUrl = route('sso.saml.metadata', ['tenant' => $tenant, 'connection' => $connection], true);
+
+    expect($xml)
+        ->toContain('Location="' . $acsUrl . '"')
+        ->and($xml)->toContain('entityID="' . $metadataUrl . '"');
 });

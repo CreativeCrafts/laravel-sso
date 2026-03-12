@@ -55,12 +55,12 @@ final readonly class SamlDriver implements SsoDriver
 
         $acsUrl = route('sso.saml.acs', [
             'tenant' => $tenant->ulid,
-            'idp' => (string) $connection->id,
+            'connection' => (string) $connection->id,
         ], true);
 
         $metadataUrl = route('sso.saml.metadata', [
             'tenant' => $tenant->ulid,
-            'idp' => (string) $connection->id,
+            'connection' => (string) $connection->id,
         ], true);
 
         $configuredEntityId = config('sso.saml.sp.entity_id');
@@ -137,12 +137,12 @@ final readonly class SamlDriver implements SsoDriver
 
         $acsUrl = route('sso.saml.acs', [
             'tenant' => $tenant->ulid,
-            'idp' => (string) $connection->id,
+            'connection' => (string) $connection->id,
         ], true);
 
         $metadataUrl = route('sso.saml.metadata', [
             'tenant' => $tenant->ulid,
-            'idp' => (string) $connection->id,
+            'connection' => (string) $connection->id,
         ], true);
 
         $entityId = config('sso.saml.sp.entity_id');

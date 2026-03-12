@@ -14,7 +14,7 @@ use Illuminate\Support\Str;
 
 uses(TestCase::class);
 
-it('completes the oidc login flow, provisions a user and redirects to the intended location', function () {
+it('completes the OIDC login flow, provisions a user and redirects to the intended location', function () {
     config()->set('sso.drivers.oidc', FakeOidcCallbackDriver::class);
 
     if (!Schema::hasTable('users')) {
@@ -56,7 +56,7 @@ it('completes the oidc login flow, provisions a user and redirects to the intend
 
     $redirectUrl = route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ]);
 
     $response = $this->get($redirectUrl . '?redirect_to=' . urlencode($intended));
@@ -69,17 +69,18 @@ it('completes the oidc login flow, provisions a user and redirects to the intend
 
     $callbackUrl = route('sso.oidc.callback', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ]);
-    $callbackResponse = $this->get($callbackUrl . '?state=' . urlencode((string) $state));
 
-    $callbackResponse->assertRedirect($intended);
+    $callbackResp = $this->get($callbackUrl . '?state=' . urlencode((string) $state));
 
+    $callbackResp->assertRedirect($intended);
     expect(auth('web')->check())->toBeTrue();
 
     $external = ExternalIdentity::query()
         ->where('tenant_id', $tenant->id)
         ->where('identity_provider_id', $idp->id)
         ->first();
+
     expect($external)->not->toBeNull();
 });

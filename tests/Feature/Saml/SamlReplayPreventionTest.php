@@ -56,7 +56,7 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
 
     $redirectResponse = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -69,12 +69,12 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
 
     $acsUrl = route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
@@ -95,7 +95,7 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
 
     $firstResponse = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,
@@ -105,7 +105,7 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
 
     $secondResponse = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
+        'connection' => (string) $connection->id,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,

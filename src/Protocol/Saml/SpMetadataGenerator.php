@@ -21,10 +21,10 @@ final class SpMetadataGenerator
     /**
      * @throws DOMException
      */
-    public function generate(string $tenant, string $idp): string
+    public function generate(string $tenant, string $connection): string
     {
-        $metadataUrl = $this->url->route('sso.saml.metadata', ['tenant' => $tenant, 'idp' => $idp], true);
-        $acsUrl = $this->url->route('sso.saml.acs', ['tenant' => $tenant, 'idp' => $idp], true);
+        $metadataUrl = $this->url->route('sso.saml.metadata', ['tenant' => $tenant, 'connection' => $connection], true);
+        $acsUrl = $this->url->route('sso.saml.acs', ['tenant' => $tenant, 'connection' => $connection], true);
 
         $entityId = $this->entityId($metadataUrl);
 
