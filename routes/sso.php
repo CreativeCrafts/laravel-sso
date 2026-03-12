@@ -13,11 +13,18 @@ Route::group([
     'middleware' => config('sso.routes.middleware', ['web']),
     'as' => 'sso.',
 ], static function (): void {
-    Route::get('{tenant}/{connection}/redirect', SsoRedirectController::class)->name('redirect');
+    Route::get('{tenant}/{connection}/redirect', SsoRedirectController::class)
+      ->middleware('throttle:sso.redirect')
+      ->name('redirect');
 
-    Route::get('{tenant}/{connection}/callback', OidcCallbackController::class)->name('oidc.callback');
+    Route::get('{tenant}/{connection}/callback', OidcCallbackController::class)
+      ->middleware('throttle:sso.callback')
+      ->name('oidc.callback');
 
-    Route::post('{tenant}/{connection}/acs', SamlAcsController::class)->name('saml.acs');
+    Route::post('{tenant}/{connection}/acs', SamlAcsController::class)
+      ->middleware('throttle:sso.acs')
+      ->name('saml.acs');
 
-    Route::get('{tenant}/{connection}/metadata', SamlSpMetadataController::class)->name('saml.metadata');
+    Route::get('{tenant}/{connection}/metadata', SamlSpMetadataController::class)
+      ->name('saml.metadata');
 });
