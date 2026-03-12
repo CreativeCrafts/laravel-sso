@@ -88,14 +88,14 @@ final readonly class OidcDriver implements SsoDriver
         $codeChallenge = OidcPkce::codeChallengeS256($attempt->code_verifier);
 
         $params = [
-          'client_id' => $clientId,
-          'redirect_uri' => $redirectUri,
-          'response_type' => $responseType,
-          'scope' => $scope,
-          'state' => $attempt->state,
-          'nonce' => $attempt->nonce,
-          'code_challenge' => $codeChallenge,
-          'code_challenge_method' => 'S256',
+            'client_id' => $clientId,
+            'redirect_uri' => $redirectUri,
+            'response_type' => $responseType,
+            'scope' => $scope,
+            'state' => $attempt->state,
+            'nonce' => $attempt->nonce,
+            'code_challenge' => $codeChallenge,
+            'code_challenge_method' => 'S256',
         ];
 
         $query = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
@@ -153,11 +153,11 @@ final readonly class OidcDriver implements SsoDriver
 
         try {
             $payload = [
-              'grant_type' => 'authorization_code',
-              'code' => $code,
-              'redirect_uri' => $redirectUri,
-              'client_id' => $clientId,
-              'code_verifier' => $attempt->code_verifier,
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => $redirectUri,
+                'client_id' => $clientId,
+                'code_verifier' => $attempt->code_verifier,
             ];
 
             if ($clientSecret !== null) {
@@ -165,10 +165,10 @@ final readonly class OidcDriver implements SsoDriver
             }
 
             $response = $this->http
-              ->timeout($timeout)
-              ->asForm()
-              ->acceptJson()
-              ->post($ep->tokenEndpoint, $payload);
+                ->timeout($timeout)
+                ->asForm()
+                ->acceptJson()
+                ->post($ep->tokenEndpoint, $payload);
 
             if (!$response->successful()) {
                 $json = $response->json();
@@ -224,10 +224,8 @@ final readonly class OidcDriver implements SsoDriver
                 displayName: $canonical->displayName,
                 claims: $canonical->toArray(),
                 context: [
-                'token_endpoint' => $ep->tokenEndpoint,
-                'userinfo_used' => $userinfoEnabled && $ep->userinfoEndpoint !== null && $accessToken !== null,
-                'raw_claims' => $rawClaims,
-              ],
+                    'userinfo_used' => $userinfoEnabled && $ep->userinfoEndpoint !== null && $accessToken !== null,
+                ],
                 error: null,
             );
         } catch (OidcTokenExchangeFailed|OidcUserinfoFailed|OidcCallbackErrorResponse|OidcCallbackCodeMissing|OidcIdTokenValidationFailed $e) {
@@ -278,10 +276,10 @@ final readonly class OidcDriver implements SsoDriver
     {
         try {
             $response = $this->http
-              ->timeout($timeout)
-              ->acceptJson()
-              ->withToken($accessToken)
-              ->get($url);
+                ->timeout($timeout)
+                ->acceptJson()
+                ->withToken($accessToken)
+                ->get($url);
 
             if (!$response->successful()) {
                 throw OidcUserinfoFailed::make('non-successful HTTP response');

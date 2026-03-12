@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Controllers;
 
+use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
 use CreativeCrafts\LaravelSso\Contracts\Core\ProvisionAndLink;
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
@@ -66,7 +67,7 @@ final readonly class SamlAcsController
 
         $redirectTo = '/';
 
-        if ($attempt !== null) {
+        if ($attempt instanceof AuthAttempt) {
             $redirect = $attempt->redirect_to;
 
             if (is_string($redirect) && $redirect !== '') {

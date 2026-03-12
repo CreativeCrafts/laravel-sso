@@ -31,11 +31,11 @@ final class FakeOidcCallbackDriver implements SsoDriver
     public function handleCallback(Request $request, Tenant $tenant, Connection $connection, AuthAttempt $attempt): DriverCallbackResult
     {
         $normalized = [
-          'sub' => 'user-123',
-          'email' => 'user@example.test',
-          'name' => 'User One',
-          'email_verified' => null,
-          'groups' => [],
+            'sub' => 'user-123',
+            'email' => 'user@example.test',
+            'name' => 'User One',
+            'email_verified' => null,
+            'groups' => [],
         ];
 
         $canonical = new Claims(
@@ -54,7 +54,13 @@ final class FakeOidcCallbackDriver implements SsoDriver
             email: $canonical->email,
             displayName: $canonical->displayName,
             claims: $canonical->toArray(),
-            context: ['driver' => 'fake'],
+            context: [
+                'driver' => 'fake',
+                'userinfo_used' => true,
+                'access_token' => 'super-secret-access-token',
+                'id_token' => 'header.payload.signature',
+                'raw_claims' => $normalized,
+            ],
             error: null,
         );
     }

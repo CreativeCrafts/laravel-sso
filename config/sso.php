@@ -94,6 +94,29 @@ return [
         'connection_setting_key' => env('SSO_LINKING_CONNECTION_SETTING_KEY', 'allow_identity_linking'),
     ],
 
+    'audit' => [
+        // Safe by default. When enabled, stores additional redacted summaries
+        // for callback claims and driver context. Raw secrets, tokens, and SAML
+        // payloads must still never be persisted.
+        'extended_context' => env('SSO_AUDIT_EXTENDED_CONTEXT', false),
+
+        // One-way hash used for stable subject correlation without persisting the
+        // raw subject value in audit records.
+        'subject_hash_algo' => env('SSO_AUDIT_SUBJECT_HASH_ALGO', 'sha256'),
+
+        // Max visible prefix retained for bounded subject hints.
+        'subject_hint_length' => (int) env('SSO_AUDIT_SUBJECT_HINT_LENGTH', 12),
+
+        // Max stored string length inside redacted audit context.
+        'string_value_max_length' => (int) env('SSO_AUDIT_STRING_VALUE_MAX_LENGTH', 80),
+
+        // Max number of claim keys retained in summarized audit context.
+        'max_claim_keys' => (int) env('SSO_AUDIT_MAX_CLAIM_KEYS', 20),
+
+        // Max number of items retained when sanitizing arrays for extended context.
+        'max_array_items' => (int) env('SSO_AUDIT_MAX_ARRAY_ITEMS', 20),
+    ],
+
     'oidc' => [
         'discovery' => [
             'enabled_default' => env('SSO_OIDC_DISCOVERY_ENABLED', true),

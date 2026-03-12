@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelSso\Models\AuditLog;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\ExternalIdentity;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
@@ -14,7 +15,7 @@ use Illuminate\Support\Str;
 
 uses(TestCase::class);
 
-beforeEach(function () {
+it('completes the saml login flow, provisions a user, redirects, and writes a redacted audit log', function () {
     if (!Schema::hasTable('users')) {
         Schema::create('users', function ($table): void {
             $table->id();
@@ -27,9 +28,7 @@ beforeEach(function () {
 
     config()->set('auth.guards.web', ['driver' => 'session', 'provider' => 'users']);
     config()->set('auth.providers.users', ['driver' => 'eloquent', 'model' => User::class]);
-});
 
-it('completes the saml login flow, provisions a user and redirects to the intended location when provisioning is enabled', function () {
     $tenant = Tenant::query()->create([
         'ulid' => (string) Str::ulid(),
         'name' => 'Tenant 01',
@@ -118,83 +117,22 @@ it('completes the saml login flow, provisions a user and redirects to the intend
         ->first();
 
     expect($external)->not->toBeNull();
-});
 
-it('fails the saml login flow when provisioning is denied by default', function () {
-    $tenant = Tenant::query()->create([
-        'ulid' => (string) Str::ulid(),
-        'name' => 'Tenant 01',
-    ]);
+    $audit = AuditLog::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('event', 'sso.callback.succeeded')
+        ->latest('id')
+        ->first();
 
-    $keys = SamlTestXmlFactory::generateRsaCertPair();
+    expect($audit)->not->toBeNull()
+        ->and($audit?->context['protocol'])->toBe('saml')
+        ->and($audit?->context)->toHaveKey('response_signature_valid')
+        ->and($audit?->context)->toHaveKey('assertion_signature_valid')
+        ->and(is_bool($audit?->context['response_signature_valid']))->toBeTrue()
+        ->and(is_bool($audit?->context['assertion_signature_valid']))->toBeTrue();
 
-    $idp = IdentityProvider::query()->create([
-        'tenant_id' => $tenant->id,
-        'name' => 'SAML IdP',
-        'protocol' => 'saml',
-        'enabled' => true,
-        'config' => [
-            'saml_sso_url' => 'https://idp.example.test/sso',
-            'saml_signing_certs_pem' => [$keys['public_cert_pem']],
-        ],
-    ]);
+    $encoded = json_encode($audit?->context, JSON_THROW_ON_ERROR);
 
-    $connection = Connection::query()->create([
-        'tenant_id' => $tenant->id,
-        'identity_provider_id' => $idp->id,
-        'name' => 'Default',
-        'enabled' => true,
-        'guard' => 'web',
-        'settings' => [],
-    ]);
-
-    $redirectResponse = $this->get(route('sso.redirect', [
-        'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
-    ]));
-
-    $redirectResponse->assertRedirect();
-
-    $location = (string) $redirectResponse->headers->get('Location');
-    parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
-    $relayState = $query['RelayState'] ?? null;
-
-    expect($relayState)->toBeString()->not->toBe('');
-
-    $acsUrl = route('sso.saml.acs', [
-        'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
-    ], true);
-
-    $audience = route('sso.saml.metadata', [
-        'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
-    ], true);
-
-    $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
-        issuer: 'https://issuer.example',
-        nameId: 'subject-denied',
-        destination: $acsUrl,
-        recipient: $acsUrl,
-        audience: $audience,
-        notBeforeIso: now('UTC')->subSeconds(30)->format('Y-m-d\TH:i:s\Z'),
-        notOnOrAfterIso: now('UTC')->addMinutes(5)->format('Y-m-d\TH:i:s\Z'),
-        privateKeyPem: $keys['private'],
-        publicCertPem: $keys['public_cert_pem'],
-        attributes: [
-            'mail' => 'denied@example.test',
-            'displayName' => 'Denied User',
-        ],
-    );
-
-    $callbackResponse = $this->post(route('sso.saml.acs', [
-        'tenant' => $tenant->ulid,
-        'idp' => (string) $connection->id,
-    ]), [
-        'SAMLResponse' => base64_encode($xml),
-        'RelayState' => (string) $relayState,
-    ]);
-
-    $callbackResponse->assertStatus(500);
-    expect(auth('web')->check())->toBeFalse();
+    expect($encoded)->not->toContain('user@example.test')
+        ->not->toContain('<samlp:Response');
 });

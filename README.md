@@ -5,7 +5,7 @@
 [![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-sso/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-sso/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-sso.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-sso)
 
-Generic OIDC and SAML 2.0 SSO for Laravel, with multi-tenant support, user provisioning, and identity linking.
+Generic OIDC and SAML 2.0 SSO for Laravel, with multi-tenant support, user provisioning, identity linking, and redacted audit logging.
 
 ## Installation
 
@@ -27,6 +27,32 @@ You can publish the config file with:
 ```bash
 php artisan vendor:publish --tag="sso-config"
 ```
+## Audit logging
+Audit logging is redacted by default.
+
+Successful callback audits retain only concise metadata such as:
+- protocol
+- tenant, connection, and attempt identifiers
+- status and error classification
+- a truncated subject hint plus a one-way subject hash
+- claim keys and bounded protocol flags such as userinfo_used or SAML signature booleans
+
+The package does not store raw OIDC tokens, raw SAML assertions, or full claim payloads in sso_audit_logs.context by default.
+
+## Extended audit context
+
+Extended audit context is available only as an explicit opt-in for debugging:
+```php
+'audit' => [
+    'extended_context' => false,
+],
+```
+When enabled, the package stores additional redacted summaries for canonical claims and driver context. Sensitive values such as access tokens, ID tokens, refresh tokens, private keys, SAML responses, and raw claim bags remain redacted even in extended mode.
+
+## Retention guidance
+
+Treat sso_audit_logs as security telemetry rather than a data warehouse. Apply a retention policy appropriate to your compliance posture and keep the extended audit context disabled outside controlled debugging windows.
+
 ## Provisioning and identity-linking policies
 Provisioning and identity linking are **deny-by-default.**
 

@@ -88,12 +88,14 @@ final class DefaultSamlClaimsMapper implements SamlClaimsMapper
     {
         foreach ($keys as $key) {
             $values = $attributes[$key] ?? null;
-
-            if (!is_array($values) || $values === []) {
+            if (!is_array($values)) {
+                continue;
+            }
+            if ($values === []) {
                 continue;
             }
 
-            $value = trim((string)$values[0]);
+            $value = trim($values[0]);
 
             if ($value !== '') {
                 return $value;
