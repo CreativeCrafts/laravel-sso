@@ -84,6 +84,24 @@ return [
         'connection_setting_key' => env('SSO_PROVISIONING_CONNECTION_SETTING_KEY', 'allow_provisioning'),
     ],
 
+    'throttling' => [
+        'redirect' => [
+            'enabled' => env('SSO_THROTTLE_REDIRECT_ENABLED', true),
+            'max_attempts' => (int) env('SSO_THROTTLE_REDIRECT_MAX_ATTEMPTS', 60),
+            'decay_minutes' => (int) env('SSO_THROTTLE_REDIRECT_DECAY_MINUTES', 1),
+        ],
+        'callback' => [
+            'enabled' => env('SSO_THROTTLE_CALLBACK_ENABLED', true),
+            'max_attempts' => (int) env('SSO_THROTTLE_CALLBACK_MAX_ATTEMPTS', 30),
+            'decay_minutes' => (int) env('SSO_THROTTLE_CALLBACK_DECAY_MINUTES', 1),
+        ],
+        'acs' => [
+            'enabled' => env('SSO_THROTTLE_ACS_ENABLED', true),
+            'max_attempts' => (int) env('SSO_THROTTLE_ACS_MAX_ATTEMPTS', 30),
+            'decay_minutes' => (int) env('SSO_THROTTLE_ACS_DECAY_MINUTES', 1),
+        ],
+    ],
+
     'linking' => [
         // Deny by default. Set to true to allow linking package-wide when a
         // connection does not declare an explicit override in settings.

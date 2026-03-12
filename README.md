@@ -138,6 +138,61 @@ The package still ships permissive policy implementations for host applications 
 
 Bind them explicitly in your application service provider if you want that behavior.
 
+## Request throttling
+
+Public SSO endpoints are rate limited by default.
+
+The package applies independent throttle buckets to:
+- sso.redirect
+- sso.oidc.callback
+- sso.saml.acs
+
+Default limits are intentionally conservative:
+```php
+'throttling' => [
+    'redirect' => [
+        'enabled' => true,
+        'max_attempts' => 60,
+        'decay_minutes' => 1,
+    ],
+    'callback' => [
+        'enabled' => true,
+        'max_attempts' => 30,
+        'decay_minutes' => 1,
+    ],
+    'acs' => [
+        'enabled' => true,
+        'max_attempts' => 30,
+        'decay_minutes' => 1,
+    ],
+],
+```
+
+**Tuning limits**
+
+For higher-traffic deployments, raise the relevant bucket without changing the others. For example, a deployment with a bursty login initiation pattern can increase the redirect bucket while keeping callback and ACS more restrictive.
+```php
+'throttling' => [
+    'redirect' => [
+        'enabled' => true,
+        'max_attempts' => 120,
+        'decay_minutes' => 1,
+    ],
+],
+```
+
+**Disabling throttling**
+
+Disabling endpoint throttling is supported but not recommended for production.
+```php
+'throttling' => [
+    'callback' => [
+        'enabled' => false,
+    ],
+],
+```
+Only disable a limiter when you have compensating protections in front of the package, such as a trusted upstream WAF or gateway policy.
+
 ## End-to-end integration tests
 
 The package includes full-flow integration coverage for both OIDC and SAML on top of the lower-level protocol and unit tests.

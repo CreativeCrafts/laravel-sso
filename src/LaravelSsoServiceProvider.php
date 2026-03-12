@@ -63,8 +63,11 @@ use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentIdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentTenantRepository;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Container\Container;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\RateLimiter;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -73,9 +76,9 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
     public function configurePackage(Package $package): void
     {
         $package
-          ->name('laravel-sso')
-          ->hasConfigFile('sso')
-          ->hasMigration('create_sso_tables');
+            ->name('laravel-sso')
+            ->hasConfigFile('sso')
+            ->hasMigration('create_sso_tables');
     }
 
     public function registeringPackage(): void
@@ -138,10 +141,10 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(TenantResolver::class, function (Container $app): TenantResolver {
             /** @var array<int, TenantResolver> $resolvers */
             $resolvers = [
-              $app->make(RouteParamTenantResolver::class),
-              $app->make(HeaderTenantResolver::class),
-              $app->make(HostTenantResolver::class),
-              $app->make(DefaultTenantResolver::class),
+                $app->make(RouteParamTenantResolver::class),
+                $app->make(HeaderTenantResolver::class),
+                $app->make(HostTenantResolver::class),
+                $app->make(DefaultTenantResolver::class),
             ];
 
             return new CompositeTenantResolver(
@@ -149,6 +152,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
                 throwIfMissing: (bool) config('sso.tenancy.throw_if_missing', true),
             );
         });
+
         $this->app->singleton(AuthAttemptService::class, DbAuthAttemptService::class);
         $this->app->singleton(DriverRegistry::class, ConfigDriverRegistry::class);
         $this->app->singleton(BeginLogin::class, BeginLoginService::class);
@@ -165,9 +169,11 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        $this->registerRateLimiters();
+
         if ($this->app->runningInConsole()) {
             $this->publishes([
-              __DIR__ . '/../resources/ui' => base_path('resources/vendor/laravel-sso/ui'),
+                __DIR__ . '/../resources/ui' => base_path('resources/vendor/laravel-sso/ui'),
             ], 'sso-ui');
         }
 
@@ -178,5 +184,50 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         if (config('sso.ui.enabled', false)) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/admin.php');
         }
+    }
+
+    private function registerRateLimiters(): void
+    {
+        RateLimiter::for('sso.redirect', function (Request $request): Limit {
+            return $this->makeThrottleLimit('redirect', 'sso.redirect', $request);
+        });
+
+        RateLimiter::for('sso.callback', function (Request $request): Limit {
+            return $this->makeThrottleLimit('callback', 'sso.callback', $request);
+        });
+
+        RateLimiter::for('sso.acs', function (Request $request): Limit {
+            return $this->makeThrottleLimit('acs', 'sso.acs', $request);
+        });
+    }
+
+    private function makeThrottleLimit(string $configKey, string $limiterName, Request $request): Limit
+    {
+        if (!(bool) config("sso.throttling.{$configKey}.enabled", true)) {
+            return Limit::none();
+        }
+
+        $maxAttempts = Config::integer("sso.throttling.{$configKey}.max_attempts", 60);
+        $decayMinutes = Config::integer("sso.throttling.{$configKey}.decay_minutes", 1);
+
+        $maxAttempts = $maxAttempts > 0 ? $maxAttempts : 60;
+        $decayMinutes = $decayMinutes > 0 ? $decayMinutes : 1;
+
+        return Limit::perMinutes($decayMinutes, $maxAttempts)
+            ->by($this->throttleKey($limiterName, $request));
+    }
+
+    private function throttleKey(string $limiterName, Request $request): string
+    {
+        $tenant = $request->route('tenant');
+        $connection = $request->route('connection');
+        $ip = $request->ip() ?? 'unknown';
+
+        return implode('|', [
+            $limiterName,
+            is_scalar($tenant) ? (string) $tenant : 'unknown-tenant',
+            is_scalar($connection) ? (string) $connection : 'unknown-connection',
+            $ip,
+        ]);
     }
 }
