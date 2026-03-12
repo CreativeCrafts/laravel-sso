@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Controllers;
 
+use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
 use CreativeCrafts\LaravelSso\Contracts\Core\ProvisionAndLink;
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
@@ -68,7 +69,7 @@ final readonly class OidcCallbackController
 
         // Default redirect to the root path if no valid redirect is provided.
         $redirectTo = '/';
-        if ($attempt !== null) {
+        if ($attempt instanceof AuthAttempt) {
             $redirect = $attempt->redirect_to;
             if (is_string($redirect) && $redirect !== '') {
                 // Prevent open redirects: allow only relative URLs or same-host absolute URLs.

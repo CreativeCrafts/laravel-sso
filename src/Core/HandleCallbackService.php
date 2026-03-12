@@ -27,6 +27,7 @@ final readonly class HandleCallbackService implements HandleCallback
         private IdentityProviderRepository $identityProviders,
         private AuthAttemptService $attempts,
         private DriverRegistry $drivers,
+        private AuditContextSanitizer $auditContexts,
     ) {
     }
 
@@ -36,13 +37,17 @@ final readonly class HandleCallbackService implements HandleCallback
     public function handle(Request $request, Tenant $tenant, int $connectionId): DriverCallbackResult
     {
         $state = $this->extractState($request);
+        $attempt = null;
+        $connection = null;
+        $identityProvider = null;
+        $protocol = null;
 
         try {
             $attempt = $this->attempts->consumeByState($tenant, $state);
 
-            if ($attempt->connection_id !== null && (int)$attempt->connection_id !== $connectionId) {
+            if ($attempt->connection_id !== null && (int) $attempt->connection_id !== $connectionId) {
                 throw InvalidAuthAttemptBinding::connectionMismatch(
-                    expected: (int)$attempt->connection_id,
+                    expected: (int) $attempt->connection_id,
                     actual: $connectionId,
                 );
             }
@@ -53,11 +58,11 @@ final readonly class HandleCallbackService implements HandleCallback
                 throw TenantScopedRecordNotFound::for(Connection::class, $connectionId);
             }
 
-            $identityProviderId = (int)$connection->identity_provider_id;
+            $identityProviderId = (int) $connection->identity_provider_id;
 
-            if ($attempt->identity_provider_id !== null && (int)$attempt->identity_provider_id !== $identityProviderId) {
+            if ($attempt->identity_provider_id !== null && (int) $attempt->identity_provider_id !== $identityProviderId) {
                 throw InvalidAuthAttemptBinding::identityProviderMismatch(
-                    expected: (int)$attempt->identity_provider_id,
+                    expected: (int) $attempt->identity_provider_id,
                     actual: $identityProviderId,
                 );
             }
@@ -68,8 +73,7 @@ final readonly class HandleCallbackService implements HandleCallback
                 throw TenantScopedRecordNotFound::for(IdentityProvider::class, $identityProviderId);
             }
 
-            $protocol = $identityProvider->protocol;
-            $protocol = $protocol !== '' ? $protocol : $attempt->protocol;
+            $protocol = $identityProvider->protocol !== '' ? $identityProvider->protocol : $attempt->protocol;
 
             $driver = $this->drivers->get($protocol);
 
@@ -80,12 +84,7 @@ final readonly class HandleCallbackService implements HandleCallback
                 connection: $connection,
                 identityProvider: $identityProvider,
                 authAttemptId: $attempt->id,
-                protocol: $protocol,
-                authenticated: $result->authenticated,
-                context: [
-                'error' => $result->error,
-                'driver_context' => $result->context,
-              ],
+                context: $this->auditContexts->sanitizeSuccess($protocol, $result),
             );
 
             return $result;
@@ -93,8 +92,13 @@ final readonly class HandleCallbackService implements HandleCallback
             $this->auditFailed(
                 tenant: $tenant,
                 connectionId: $connectionId,
-                state: $state,
-                exception: $e,
+                identityProviderId: $identityProvider?->id,
+                authAttemptId: $attempt?->id,
+                context: $this->auditContexts->sanitizeFailure(
+                    exception: $e,
+                    state: $state,
+                    protocol: $protocol ?? $attempt?->protocol,
+                ),
             );
 
             throw $e;
@@ -104,10 +108,10 @@ final readonly class HandleCallbackService implements HandleCallback
     private function extractState(Request $request): string
     {
         $candidates = [
-          $request->query('state'),
-          $request->input('state'),
-          $request->input('RelayState'),
-          $request->input('relay_state'),
+            $request->query('state'),
+            $request->input('state'),
+            $request->input('RelayState'),
+            $request->input('relay_state'),
         ];
 
         foreach ($candidates as $value) {
@@ -127,42 +131,37 @@ final readonly class HandleCallbackService implements HandleCallback
         Connection $connection,
         IdentityProvider $identityProvider,
         int $authAttemptId,
-        string $protocol,
-        bool $authenticated,
         array $context,
     ): void {
         AuditLog::query()->create([
-          'tenant_id' => $tenant->id,
-          'identity_provider_id' => $identityProvider->id,
-          'connection_id' => $connection->id,
-          'auth_attempt_id' => $authAttemptId,
-          'event' => 'sso.callback.succeeded',
-          'level' => 'info',
-          'context' => array_merge($context, [
-            'protocol' => $protocol,
-            'authenticated' => $authenticated,
-          ]),
+            'tenant_id' => $tenant->id,
+            'identity_provider_id' => $identityProvider->id,
+            'connection_id' => $connection->id,
+            'auth_attempt_id' => $authAttemptId,
+            'event' => 'sso.callback.succeeded',
+            'level' => 'info',
+            'context' => $context,
         ]);
     }
 
+    /**
+     * @param array<string, mixed> $context
+     */
     private function auditFailed(
         Tenant $tenant,
         int $connectionId,
-        string $state,
-        Throwable $exception,
+        ?int $identityProviderId,
+        ?int $authAttemptId,
+        array $context,
     ): void {
         AuditLog::query()->create([
-          'tenant_id' => $tenant->id,
-          'identity_provider_id' => null,
-          'connection_id' => $connectionId,
-          'auth_attempt_id' => null,
-          'event' => 'sso.callback.failed',
-          'level' => 'warning',
-          'context' => [
-            'state' => $state,
-            'exception' => $exception::class,
-            'message' => $exception->getMessage(),
-          ],
+            'tenant_id' => $tenant->id,
+            'identity_provider_id' => $identityProviderId,
+            'connection_id' => $connectionId,
+            'auth_attempt_id' => $authAttemptId,
+            'event' => 'sso.callback.failed',
+            'level' => 'warning',
+            'context' => $context,
         ]);
     }
 }
