@@ -30,7 +30,41 @@ final class EloquentTenantRepository implements TenantRepository
         }
 
         return Tenant::query()
-          ->where('ulid', $ulid)
-          ->first();
+            ->where('ulid', $ulid)
+            ->first();
+    }
+
+    public function findByHost(string $host): ?Tenant
+    {
+        $host = strtolower(trim($host));
+
+        if ($host === '') {
+            return null;
+        }
+
+        $tenant = Tenant::query()
+            ->where('metadata->domain', $host)
+            ->first();
+
+        if ($tenant instanceof Tenant) {
+            return $tenant;
+        }
+
+        return Tenant::query()
+            ->whereJsonContains('metadata->domains', $host)
+            ->first();
+    }
+
+    public function findBySubdomain(string $subdomain): ?Tenant
+    {
+        $subdomain = strtolower(trim($subdomain));
+
+        if ($subdomain === '') {
+            return null;
+        }
+
+        return Tenant::query()
+            ->where('metadata->subdomain', $subdomain)
+            ->first();
     }
 }

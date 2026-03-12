@@ -11,7 +11,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 
 interface ExternalIdentityRepository
 {
-    public function findForTenantIdentityProviderAndSubject(
+    public function findForTenantProviderAndSubject(
         Tenant $tenant,
         IdentityProvider $identityProvider,
         string $subject,

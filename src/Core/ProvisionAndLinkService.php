@@ -49,7 +49,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
     public function handle(Request $request, Tenant $tenant, int $connectionId, DriverCallbackResult $callback): Authenticatable
     {
-        if (!$callback->authenticated) {
+        if ($callback->authenticated === false) {
             throw new RuntimeException('Callback result is not authenticated.');
         }
 
@@ -80,7 +80,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
         $guard = $this->guards->selectGuard($tenant, $connection);
 
-        $existingExternal = $this->externalIdentities->findForTenantIdentityProviderAndSubject(
+        $existingExternal = $this->externalIdentities->findForTenantProviderAndSubject(
             tenant: $tenant,
             identityProvider: $identityProvider,
             subject: $subject,
@@ -100,18 +100,19 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
                     user: $linked,
                 );
 
-
                 $this->auth->guard($guard)->login($linked);
 
-                $this->events->dispatch(new LoginCompleted(
-                    request: $request,
-                    tenant: $tenant,
-                    connection: $connection,
-                    identityProvider: $identityProvider,
-                    user: $linked,
-                    guard: $guard,
-                    callback: $callback,
-                ));
+                $this->events->dispatch(
+                    new LoginCompleted(
+                        request: $request,
+                        tenant: $tenant,
+                        connection: $connection,
+                        identityProvider: $identityProvider,
+                        user: $linked,
+                        guard: $guard,
+                        callback: $callback,
+                    ),
+                );
 
                 return $linked;
             }
@@ -124,7 +125,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         }
 
         if ($user instanceof Authenticatable) {
-            if (!$this->identityLinkPolicy->allows($tenant, $connection, $identityProvider, $user, $claims)) {
+            if ($this->identityLinkPolicy->allows($tenant, $connection, $identityProvider, $user, $claims) === false) {
                 throw IdentityLinkDenied::make();
             }
 
@@ -139,34 +140,38 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             );
 
             if ($externalIdentity->wasRecentlyCreated) {
-                $this->events->dispatch(new IdentityLinked(
-                    request: $request,
-                    tenant: $tenant,
-                    connection: $connection,
-                    identityProvider: $identityProvider,
-                    externalIdentity: $externalIdentity,
-                    user: $user,
-                    guard: $guard,
-                    callback: $callback,
-                ));
+                $this->events->dispatch(
+                    new IdentityLinked(
+                        request: $request,
+                        tenant: $tenant,
+                        connection: $connection,
+                        identityProvider: $identityProvider,
+                        externalIdentity: $externalIdentity,
+                        user: $user,
+                        guard: $guard,
+                        callback: $callback,
+                    ),
+                );
             }
 
             $this->auth->guard($guard)->login($user);
 
-            $this->events->dispatch(new LoginCompleted(
-                request: $request,
-                tenant: $tenant,
-                connection: $connection,
-                identityProvider: $identityProvider,
-                user: $user,
-                guard: $guard,
-                callback: $callback,
-            ));
+            $this->events->dispatch(
+                new LoginCompleted(
+                    request: $request,
+                    tenant: $tenant,
+                    connection: $connection,
+                    identityProvider: $identityProvider,
+                    user: $user,
+                    guard: $guard,
+                    callback: $callback,
+                ),
+            );
 
             return $user;
         }
 
-        if (!$this->provisioningPolicy->allows($tenant, $connection, $identityProvider, $claims)) {
+        if ($this->provisioningPolicy->allows($tenant, $connection, $identityProvider, $claims) === false) {
             throw ProvisioningDenied::make();
         }
 
@@ -176,15 +181,17 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
         $user = $this->provisioner->provision($guard, $email, $displayName, $claims);
 
-        $this->events->dispatch(new UserProvisioned(
-            request: $request,
-            tenant: $tenant,
-            connection: $connection,
-            identityProvider: $identityProvider,
-            user: $user,
-            guard: $guard,
-            callback: $callback,
-        ));
+        $this->events->dispatch(
+            new UserProvisioned(
+                request: $request,
+                tenant: $tenant,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                user: $user,
+                guard: $guard,
+                callback: $callback,
+            ),
+        );
 
         $externalIdentity = $this->externalIdentities->upsertForUser(
             tenant: $tenant,
@@ -197,29 +204,33 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         );
 
         if ($externalIdentity->wasRecentlyCreated) {
-            $this->events->dispatch(new IdentityLinked(
-                request: $request,
-                tenant: $tenant,
-                connection: $connection,
-                identityProvider: $identityProvider,
-                externalIdentity: $externalIdentity,
-                user: $user,
-                guard: $guard,
-                callback: $callback,
-            ));
+            $this->events->dispatch(
+                new IdentityLinked(
+                    request: $request,
+                    tenant: $tenant,
+                    connection: $connection,
+                    identityProvider: $identityProvider,
+                    externalIdentity: $externalIdentity,
+                    user: $user,
+                    guard: $guard,
+                    callback: $callback,
+                ),
+            );
         }
 
         $this->auth->guard($guard)->login($user);
 
-        $this->events->dispatch(new LoginCompleted(
-            request: $request,
-            tenant: $tenant,
-            connection: $connection,
-            identityProvider: $identityProvider,
-            user: $user,
-            guard: $guard,
-            callback: $callback,
-        ));
+        $this->events->dispatch(
+            new LoginCompleted(
+                request: $request,
+                tenant: $tenant,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                user: $user,
+                guard: $guard,
+                callback: $callback,
+            ),
+        );
 
         return $user;
     }

@@ -15,4 +15,8 @@ interface TenantRepository
      * @throws TenantNotFound
      */
     public function getByUlid(string $ulid): Tenant;
+
+    public function findByHost(string $host): ?Tenant;
+
+    public function findBySubdomain(string $subdomain): ?Tenant;
 }

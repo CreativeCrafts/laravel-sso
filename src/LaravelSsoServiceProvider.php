@@ -26,6 +26,7 @@ use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsMapper;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlMetadataParser;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\AuditLogRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\AuthAttemptRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ExternalIdentityRepository;
@@ -58,6 +59,7 @@ use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlMetadataParser;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
+use CreativeCrafts\LaravelSso\Repositories\EloquentAuditLogRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentAuthAttemptRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentExternalIdentityRepository;
@@ -88,6 +90,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(TenantRepository::class, EloquentTenantRepository::class);
         $this->app->singleton(AuthAttemptRepository::class, EloquentAuthAttemptRepository::class);
         $this->app->singleton(ExternalIdentityRepository::class, EloquentExternalIdentityRepository::class);
+        $this->app->singleton(AuditLogRepository::class, EloquentAuditLogRepository::class);
 
         $this->app->singleton(GuardSelector::class, DefaultGuardSelector::class);
         $this->app->singleton(ProvisioningPolicy::class, DefaultProvisioningPolicy::class);
@@ -101,30 +104,33 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(SamlClaimsMapper::class, DefaultSamlClaimsMapper::class);
         $this->app->singleton(SamlClaimsNormalizer::class, DefaultSamlClaimsNormalizer::class);
 
-        $this->app->singleton(RouteParamTenantResolver::class, function (): RouteParamTenantResolver {
+        $this->app->singleton(RouteParamTenantResolver::class, function (Container $app): RouteParamTenantResolver {
             $value = config('sso.tenancy.route_param', 'tenant');
 
             return new RouteParamTenantResolver(
                 routeParam: is_string($value) && $value !== '' ? $value : 'tenant',
+                tenants: $app->make(TenantRepository::class),
             );
         });
 
-        $this->app->singleton(DefaultTenantResolver::class, function (): DefaultTenantResolver {
+        $this->app->singleton(DefaultTenantResolver::class, function (Container $app): DefaultTenantResolver {
             $value = config('sso.tenancy.default_tenant_ulid');
 
             return new DefaultTenantResolver(
                 defaultTenantUlid: is_string($value) && $value !== '' ? $value : null,
+                tenants: $app->make(TenantRepository::class),
             );
         });
 
-        $this->app->singleton(HeaderTenantResolver::class, function (): HeaderTenantResolver {
+        $this->app->singleton(HeaderTenantResolver::class, function (Container $app): HeaderTenantResolver {
             return new HeaderTenantResolver(
                 enabled: (bool) config('sso.tenancy.header.enabled', false),
                 headerName: Config::string('sso.tenancy.header.name', 'X-SSO-Tenant'),
+                tenants: $app->make(TenantRepository::class),
             );
         });
 
-        $this->app->singleton(HostTenantResolver::class, function (): HostTenantResolver {
+        $this->app->singleton(HostTenantResolver::class, function (Container $app): HostTenantResolver {
             $mode = config('sso.tenancy.host.mode', 'host');
             $mode = is_string($mode) && $mode !== '' ? $mode : 'host';
 
@@ -135,6 +141,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
                 enabled: (bool) config('sso.tenancy.host.enabled', false),
                 mode: $mode,
                 baseDomain: $baseDomain,
+                tenants: $app->make(TenantRepository::class),
             );
         });
 
