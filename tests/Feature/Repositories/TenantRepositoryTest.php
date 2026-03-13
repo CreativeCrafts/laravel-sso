@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelSso\Exceptions\TenantNotFound;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use CreativeCrafts\LaravelSso\Repositories\EloquentTenantRepository;
 use CreativeCrafts\LaravelSso\Tests\TestCase;
@@ -31,4 +32,42 @@ it('finds tenants by ulid host and subdomain through the repository', function (
         ->and($repository->findBySubdomain('tenant-a')?->id)->toBe($tenant->id)
         ->and($repository->findByHost('missing.example.test'))->toBeNull()
         ->and($repository->findBySubdomain('missing'))->toBeNull();
+});
+
+it('lists creates updates and deletes tenants through the repository', function () {
+    $repository = new EloquentTenantRepository();
+
+    $created = $repository->create([
+        'ulid' => (string) Str::ulid(),
+        'name' => 'Tenant Created',
+        'metadata' => ['domain' => 'created.example.test'],
+    ]);
+
+    $listed = $repository->listAll();
+
+    expect($listed->pluck('id')->all())->toContain($created->id);
+
+    $updated = $repository->updateByUlid($created->ulid, [
+        'name' => 'Tenant Updated',
+        'metadata' => ['domain' => 'updated.example.test'],
+    ]);
+
+    expect($updated->id)->toBe($created->id)
+        ->and($updated->name)->toBe('Tenant Updated')
+        ->and($updated->metadata['domain'])->toBe('updated.example.test');
+
+    $repository->deleteByUlid($created->ulid);
+
+    expect($repository->findByUlid($created->ulid))->toBeNull();
+});
+
+it('throws when updating or deleting a missing tenant', function () {
+    $repository = new EloquentTenantRepository();
+    $missing = (string) Str::ulid();
+
+    expect(fn () => $repository->updateByUlid($missing, ['name' => 'Nope']))
+        ->toThrow(TenantNotFound::class);
+
+    expect(fn () => $repository->deleteByUlid($missing))
+        ->toThrow(TenantNotFound::class);
 });

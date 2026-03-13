@@ -60,8 +60,9 @@
     "prepare": "@php vendor/bin/testbench package:discover --ansi",
     "analyse": "XDEBUG_MODE=off php vendor/bin/phpstan analyse --memory-limit=128G",
     "test": "vendor/bin/pest",
-    "test-coverage": "vendor/bin/pest --coverage",
+    "test-coverage": "vendor/bin/pest --coverage --coverage-text",
     "pint": "vendor/bin/pint",
+    "pint-test": "vendor/bin/pint --test",
     "check-deps": "composer outdated --direct",
     "validate-composer": "composer validate --strict",
     "security-audit": "composer audit",
@@ -79,7 +80,9 @@
     "ci": [
       "@validate-composer",
       "@security-audit",
+      "@pint-test",
       "@analyse",
+      "@test",
       "@test-coverage"
     ]
   },

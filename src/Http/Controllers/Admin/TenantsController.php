@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Controllers\Admin;
 
+use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
+use CreativeCrafts\LaravelSso\Exceptions\TenantNotFound;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\TenantStoreRequest;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\TenantUpdateRequest;
 use CreativeCrafts\LaravelSso\Models\Tenant;
@@ -13,12 +15,17 @@ use Symfony\Component\HttpFoundation\Response;
 
 final readonly class TenantsController
 {
+    public function __construct(
+        private TenantRepository $tenants,
+    ) {
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $tenants = Tenant::query()->orderBy('id')->get();
+        $items = $this->tenants->listAll();
 
         return response()->json([
-          'data' => $tenants->map(fn (Tenant $t): array => $this->toArray($t))->all(),
+            'data' => $items->map(fn (Tenant $tenant): array => $this->toArray($tenant))->all(),
         ]);
     }
 
@@ -27,41 +34,49 @@ final readonly class TenantsController
         /** @var array<string, mixed> $payload */
         $payload = $request->validated();
 
-        $tenant = Tenant::query()->create($payload);
+        $tenant = $this->tenants->create($payload);
 
         return response()->json([
-          'data' => $this->toArray($tenant),
+            'data' => $this->toArray($tenant),
         ], Response::HTTP_CREATED);
     }
 
     public function show(Request $request, string $tenant): JsonResponse
     {
-        $model = Tenant::query()->where('ulid', $tenant)->firstOrFail();
+        try {
+            $model = $this->tenants->getByUlid($tenant);
+        } catch (TenantNotFound) {
+            abort(404);
+        }
 
         return response()->json([
-          'data' => $this->toArray($model),
+            'data' => $this->toArray($model),
         ]);
     }
 
     public function update(TenantUpdateRequest $request, string $tenant): JsonResponse
     {
-        $model = Tenant::query()->where('ulid', $tenant)->firstOrFail();
-
         /** @var array<string, mixed> $payload */
         $payload = $request->validated();
 
-        $model->fill($payload);
-        $model->save();
+        try {
+            $model = $this->tenants->updateByUlid($tenant, $payload);
+        } catch (TenantNotFound) {
+            abort(404);
+        }
 
         return response()->json([
-          'data' => $this->toArray($model),
+            'data' => $this->toArray($model),
         ]);
     }
 
     public function destroy(Request $request, string $tenant): JsonResponse
     {
-        $model = Tenant::query()->where('ulid', $tenant)->firstOrFail();
-        $model->delete();
+        try {
+            $this->tenants->deleteByUlid($tenant);
+        } catch (TenantNotFound) {
+            abort(404);
+        }
 
         return response()->json([], Response::HTTP_NO_CONTENT);
     }
@@ -75,10 +90,10 @@ final readonly class TenantsController
         $metadata = $tenant->metadata;
 
         return [
-          'id' => (int)$tenant->id,
-          'ulid' => (string)$tenant->ulid,
-          'name' => $tenant->name !== null ? (string)$tenant->name : null,
-          'metadata' => $metadata,
+            'id' => (int) $tenant->id,
+            'ulid' => (string) $tenant->ulid,
+            'name' => $tenant->name !== null ? (string) $tenant->name : null,
+            'metadata' => $metadata,
         ];
     }
 }
