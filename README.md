@@ -1,20 +1,31 @@
-# Multi-tenant SSO (OIDC + SAML 2.0) for Laravel.
+# Multi-tenant SSO (OIDC + SAML 2.0) for Laravel
 
 [![Latest Version on Packagist](https://img.shields.io/packagist/v/creativecrafts/laravel-sso.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-sso)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-sso/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/creativecrafts/laravel-sso/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-sso/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/creativecrafts/laravel-sso/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
+[![GitHub CI Status](https://img.shields.io/github/actions/workflow/status/creativecrafts/laravel-sso/ci.yml?branch=main&label=ci&style=flat-square)](https://github.com/creativecrafts/laravel-sso/actions/workflows/ci.yml)
 [![Total Downloads](https://img.shields.io/packagist/dt/creativecrafts/laravel-sso.svg?style=flat-square)](https://packagist.org/packages/creativecrafts/laravel-sso)
 
 Generic OIDC and SAML 2.0 SSO for Laravel, with multi-tenant support, user provisioning, identity linking, redacted audit logging, replay prevention, and configurable throttling on public SSO endpoints.
 
+## Compatibility
+
+This package currently supports:
+
+- PHP `^8.3`
+- Laravel `^12.0`
+
+See `composer.json` for the authoritative runtime constraints.
+
 ## Documentation
 
-For operator-facing guidance, see:
+For operator-facing and release-facing guidance, see:
 
 - [Operator Guide](docs/operator-guide.md)
 - [Error Catalog](docs/error-catalog.md)
 - [Deployment Guide](docs/deployment-guide.md)
 - [Troubleshooting Guide](docs/troubleshooting.md)
+- [Upgrade Guide](docs/upgrade-guide.md)
+- [Maintainer Release Checklist](docs/maintainer-release-checklist.md)
+- [Architecture Audit](docs/architecture-audit.md)
 
 ## Installation
 
@@ -60,6 +71,8 @@ Start here for operations and production rollout:
 - `docs/error-catalog.md`
 - `docs/deployment-guide.md`
 - `docs/troubleshooting.md`
+- `docs/upgrade-guide.md`
+- `docs/maintainer-release-checklist.md`
 
 ## Provisioning and identity-linking policies
 
@@ -186,6 +199,21 @@ Run the full test suite:
 ~~~bash
 composer test
 ~~~
+
+Run the release-quality command set locally:
+
+~~~bash
+composer ci
+~~~
+
+For maintainer release workflow and release gates, see `docs/maintainer-release-checklist.md`.
+
+## Upgrade guidance
+
+Before adopting milestone changes, review:
+
+- `docs/upgrade-guide.md`
+- `CHANGELOG.md`
 
 ## Changelog
 
