@@ -7,6 +7,7 @@ namespace CreativeCrafts\LaravelSso\Repositories;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
 use CreativeCrafts\LaravelSso\Exceptions\TenantNotFound;
 use CreativeCrafts\LaravelSso\Models\Tenant;
+use Illuminate\Support\Collection;
 
 final class EloquentTenantRepository implements TenantRepository
 {
@@ -66,5 +67,40 @@ final class EloquentTenantRepository implements TenantRepository
         return Tenant::query()
             ->where('metadata->subdomain', $subdomain)
             ->first();
+    }
+
+    public function listAll(): Collection
+    {
+        return Tenant::query()
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    public function create(array $attributes): Tenant
+    {
+        return Tenant::query()->create($attributes);
+    }
+
+    /**
+     * @param array<string, mixed> $attributes
+     */
+    public function updateByUlid(string $ulid, array $attributes): Tenant
+    {
+        $tenant = $this->getByUlid($ulid);
+
+        $tenant->fill($attributes);
+        $tenant->save();
+
+        return $tenant;
+    }
+
+    public function deleteByUlid(string $ulid): void
+    {
+        $tenant = $this->getByUlid($ulid);
+
+        $tenant->delete();
     }
 }
