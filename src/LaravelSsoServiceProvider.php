@@ -20,6 +20,7 @@ use CreativeCrafts\LaravelSso\Console\Commands\SsoInstallCommand;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeConnectionCommand;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeIdentityProviderCommand;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeTenantCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoPruneCommand;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
@@ -95,6 +96,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
                 SsoMakeTenantCommand::class,
                 SsoMakeIdentityProviderCommand::class,
                 SsoMakeConnectionCommand::class,
+                SsoPruneCommand::class,
             ]);
     }
 
@@ -194,6 +196,10 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        if (!config('sso.enabled', true)) {
+            return;
+        }
+
         $this->registerRateLimiters();
 
         if ($this->app->runningInConsole()) {

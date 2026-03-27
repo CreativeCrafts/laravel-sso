@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\View\Components;
 
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
 final class SsoButton extends Component
 {
-    private const VIEW = 'laravel-sso::components.sso-button';
+    private const string VIEW = 'laravel-sso::components.sso-button';
 
     public function __construct(
         public string $tenant,
@@ -18,6 +19,9 @@ final class SsoButton extends Component
     ) {
     }
 
+    /**
+     * @throws BindingResolutionException
+     */
     public function render(): View
     {
         /** @var View $view */

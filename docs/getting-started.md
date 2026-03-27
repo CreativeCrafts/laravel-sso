@@ -11,7 +11,7 @@
 3. Create a tenant, identity provider, and connection
    ```bash
    php artisan sso:make-tenant "Acme"
-   php artisan sso:make-idp $(php -r "echo Str::ulid();") "Acme IdP" --protocol=oidc
+   php artisan sso:make-idp $(php -r "require 'vendor/autoload.php'; echo \\Illuminate\\Support\\Str::ulid();") "Acme IdP" --protocol=oidc
    php artisan sso:make-connection {tenant_ulid} {idp_id} "Acme OIDC"
    ```
 4. Add a login button to your app

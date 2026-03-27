@@ -22,10 +22,20 @@ final class SsoInstallCommand extends Command
             '--force' => $this->option('force'),
         ];
 
-        Artisan::call('vendor:publish', $params);
+        $publishExit = Artisan::call('vendor:publish', $params);
+
+        if ($publishExit !== 0) {
+            $this->components->error('Publishing assets failed.');
+            return self::FAILURE;
+        }
 
         $this->components->info('Running database migrations...');
-        Artisan::call('migrate', ['--force' => true]);
+        $migrateExit = Artisan::call('migrate', ['--force' => true]);
+
+        if ($migrateExit !== 0) {
+            $this->components->error('Database migrations failed.');
+            return self::FAILURE;
+        }
 
         $this->components->info('Laravel SSO installation complete.');
 

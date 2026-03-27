@@ -11,6 +11,7 @@ use CreativeCrafts\LaravelSso\Contracts\Repositories\AuditLogRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
+use CreativeCrafts\LaravelSso\Events\Dto\CallbackEventSummary;
 use CreativeCrafts\LaravelSso\Events\CallbackFailed;
 use CreativeCrafts\LaravelSso\Events\CallbackSucceeded;
 use CreativeCrafts\LaravelSso\Exceptions\CallbackStateMissing;
@@ -48,15 +49,6 @@ final readonly class HandleCallbackService implements HandleCallback
         $protocol = null;
 
         try {
-            $attempt = $this->attempts->consumeByState($tenant, $state);
-
-            if ($attempt->connection_id !== null && (int) $attempt->connection_id !== $connectionId) {
-                throw InvalidAuthAttemptBinding::connectionMismatch(
-                    expected: (int) $attempt->connection_id,
-                    actual: $connectionId,
-                );
-            }
-
             $connection = $this->connections->findForTenant($tenant, $connectionId);
 
             if (!$connection instanceof Connection) {
@@ -65,17 +57,31 @@ final readonly class HandleCallbackService implements HandleCallback
 
             $identityProviderId = (int) $connection->identity_provider_id;
 
+            $identityProvider = $this->identityProviders->findForTenant($tenant, $identityProviderId);
+
+            if (!$identityProvider instanceof IdentityProvider) {
+                throw TenantScopedRecordNotFound::for(IdentityProvider::class, $identityProviderId);
+            }
+
+            $attempt = $this->attempts->consumeByState(
+                tenant: $tenant,
+                state: $state,
+                expectedConnectionId: $connection->id,
+                expectedIdentityProviderId: $identityProvider->id,
+            );
+
+            if ($attempt->connection_id !== null && (int) $attempt->connection_id !== $connectionId) {
+                throw InvalidAuthAttemptBinding::connectionMismatch(
+                    expected: (int) $attempt->connection_id,
+                    actual: $connectionId,
+                );
+            }
+
             if ($attempt->identity_provider_id !== null && (int) $attempt->identity_provider_id !== $identityProviderId) {
                 throw InvalidAuthAttemptBinding::identityProviderMismatch(
                     expected: (int) $attempt->identity_provider_id,
                     actual: $identityProviderId,
                 );
-            }
-
-            $identityProvider = $this->identityProviders->findForTenant($tenant, $identityProviderId);
-
-            if (!$identityProvider instanceof IdentityProvider) {
-                throw TenantScopedRecordNotFound::for(IdentityProvider::class, $identityProviderId);
             }
 
             $protocol = $identityProvider->protocol !== '' ? $identityProvider->protocol : $attempt->protocol;
@@ -92,14 +98,15 @@ final readonly class HandleCallbackService implements HandleCallback
                 context: $this->auditContexts->sanitizeSuccess($protocol, $result),
             );
 
-            $this->events->dispatch(new CallbackSucceeded(
-                request: $request,
-                tenant: $tenant,
-                connection: $connection,
-                identityProvider: $identityProvider,
-                attempt: $attempt,
-                result: $result,
-            ));
+            $this->events->dispatch(
+                new CallbackSucceeded(
+                    tenant: $tenant,
+                    connection: $connection,
+                    identityProvider: $identityProvider,
+                    attempt: $attempt,
+                    callback: CallbackEventSummary::fromResult($protocol, $result),
+                ),
+            );
 
             return $result;
         } catch (Throwable $e) {
@@ -115,16 +122,18 @@ final readonly class HandleCallbackService implements HandleCallback
                 ),
             );
 
-            $this->events->dispatch(new CallbackFailed(
-                request: $request,
-                tenant: $tenant,
-                connectionId: $connectionId,
-                attempt: $attempt,
-                connection: $connection,
-                identityProvider: $identityProvider,
-                protocol: $protocol ?? $attempt?->protocol,
-                exception: $e,
-            ));
+            $this->events->dispatch(
+                new CallbackFailed(
+                    tenant: $tenant,
+                    connectionId: $connectionId,
+                    attempt: $attempt,
+                    connection: $connection,
+                    identityProvider: $identityProvider,
+                    protocol: $protocol ?? $attempt?->protocol,
+                    exceptionClass: $e::class,
+                    message: mb_substr($e->getMessage(), 0, 500),
+                ),
+            );
 
             throw $e;
         }

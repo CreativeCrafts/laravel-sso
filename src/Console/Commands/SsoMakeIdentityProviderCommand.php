@@ -34,10 +34,29 @@ final class SsoMakeIdentityProviderCommand extends Command
         $protocol = $this->option('protocol');
         $enabled = (bool) $this->option('enabled');
 
+        $availableProtocols = array_keys((array) config('sso.drivers', []));
+
+        if (!is_string($protocol) || $protocol === '') {
+            $this->components->error('Protocol must be provided.');
+            return self::FAILURE;
+        }
+
+        if ($availableProtocols !== [] && !in_array($protocol, $availableProtocols, true)) {
+            $this->components->error(
+                sprintf(
+                    'Protocol "%s" is not registered. Available: %s',
+                    $protocol,
+                    implode(', ', $availableProtocols),
+                ),
+            );
+
+            return self::FAILURE;
+        }
+
         $idp = IdentityProvider::query()->create([
             'tenant_id' => $tenant->id,
             'name' => $name,
-            'protocol' => is_string($protocol) && $protocol !== '' ? $protocol : 'oidc',
+            'protocol' => $protocol,
             'enabled' => $enabled,
             'config' => [],
         ]);

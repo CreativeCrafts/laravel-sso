@@ -32,4 +32,9 @@ final class SamlAssertionConditionsInvalid extends RuntimeException
     {
         return new self('SAML assertion is expired (NotOnOrAfter).');
     }
+
+    public static function invalidTimestamp(): self
+    {
+        return new self('SAML assertion timestamp could not be parsed.');
+    }
 }

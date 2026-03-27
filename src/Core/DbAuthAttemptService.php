@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Core;
 
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
+use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptAlreadyConsumed;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptExpired;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptNotFound;
@@ -55,9 +56,13 @@ final class DbAuthAttemptService implements AuthAttemptService
     /**
      * @throws Throwable
      */
-    public function consumeByState(Tenant $tenant, string $state): AuthAttempt
-    {
-        return DB::transaction(static function () use ($tenant, $state): AuthAttempt {
+    public function consumeByState(
+        Tenant $tenant,
+        string $state,
+        ?int $expectedConnectionId = null,
+        ?int $expectedIdentityProviderId = null,
+    ): AuthAttempt {
+        return DB::transaction(static function () use ($tenant, $state, $expectedConnectionId, $expectedIdentityProviderId): AuthAttempt {
             $attempt = AuthAttempt::query()
               ->where('tenant_id', $tenant->id)
               ->where('state', $state)
@@ -74,6 +79,20 @@ final class DbAuthAttemptService implements AuthAttemptService
 
             if ($attempt->isExpired(now())) {
                 throw AuthAttemptExpired::forState($state);
+            }
+
+            if ($expectedConnectionId !== null && $attempt->connection_id !== null && (int) $attempt->connection_id !== $expectedConnectionId) {
+                throw InvalidAuthAttemptBinding::connectionMismatch(
+                    expected: (int) $attempt->connection_id,
+                    actual: $expectedConnectionId,
+                );
+            }
+
+            if ($expectedIdentityProviderId !== null && $attempt->identity_provider_id !== null && (int) $attempt->identity_provider_id !== $expectedIdentityProviderId) {
+                throw InvalidAuthAttemptBinding::identityProviderMismatch(
+                    expected: (int) $attempt->identity_provider_id,
+                    actual: $expectedIdentityProviderId,
+                );
             }
 
             $attempt->forceFill([

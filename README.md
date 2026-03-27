@@ -145,8 +145,8 @@ Public SSO endpoints are rate limited by default.
 The package applies independent throttle buckets to:
 
 - `sso.redirect`
-- `sso.oidc.callback`
-- `sso.saml.acs`
+- `sso.callback`
+- `sso.acs`
 
 Default limits are intentionally conservative:
 
@@ -171,6 +171,10 @@ Default limits are intentionally conservative:
 ~~~
 
 Disable throttling only if you have strong compensating controls upstream.
+
+## Data retention
+
+Run `php artisan sso:prune --attempts-days=7 --audit-days=30` on a schedule (for example, daily) to remove stale `sso_auth_attempts` and `sso_audit_logs` records and keep tables compact.
 
 ## Optional Admin UI
 

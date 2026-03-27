@@ -68,7 +68,7 @@ it('dispatches callback succeeded with the expected payload', function () {
             && $event->connection->is($connection)
             && $event->identityProvider->is($idp)
             && $event->attempt->is($attempt)
-            && $event->result->authenticated === true;
+            && $event->callback->authenticated === true;
     });
 });
 
@@ -122,10 +122,10 @@ it('dispatches callback failed when callback handling throws', function () {
     Event::assertDispatched(CallbackFailed::class, function (CallbackFailed $event) use ($tenant, $connection): bool {
         return $event->tenant->is($tenant)
             && $event->connectionId === $connection->id
-            && $event->exception instanceof AuthAttemptAlreadyConsumed
+            && $event->exceptionClass === AuthAttemptAlreadyConsumed::class
             && $event->attempt === null
-            && $event->connection === null
-            && $event->identityProvider === null
+            && $event->connection?->is($connection) === true
+            && $event->identityProvider !== null
             && $event->protocol === null;
     });
 });

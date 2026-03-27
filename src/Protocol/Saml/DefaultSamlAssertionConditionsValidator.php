@@ -10,6 +10,7 @@ use CreativeCrafts\LaravelSso\Exceptions\SamlAssertionConditionsInvalid;
 use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
 use DOMElement;
 use DOMXPath;
+use Exception;
 
 final class DefaultSamlAssertionConditionsValidator implements SamlAssertionConditionsValidator
 {
@@ -58,14 +59,22 @@ final class DefaultSamlAssertionConditionsValidator implements SamlAssertionCond
             $notOnOrAfter = $conditions->getAttribute('NotOnOrAfter');
 
             if ($notBefore !== '') {
-                $nb = CarbonImmutable::parse($notBefore, 'UTC');
+                try {
+                    $nb = CarbonImmutable::parse($notBefore, 'UTC');
+                } catch (Exception) {
+                    throw SamlAssertionConditionsInvalid::invalidTimestamp();
+                }
                 if ($now->addSeconds($skew)->lt($nb)) {
                     throw SamlAssertionConditionsInvalid::notYetValid();
                 }
             }
 
             if ($notOnOrAfter !== '') {
-                $noa = CarbonImmutable::parse($notOnOrAfter, 'UTC');
+                try {
+                    $noa = CarbonImmutable::parse($notOnOrAfter, 'UTC');
+                } catch (Exception) {
+                    throw SamlAssertionConditionsInvalid::invalidTimestamp();
+                }
                 if ($now->subSeconds($skew)->greaterThanOrEqualTo($noa)) {
                     throw SamlAssertionConditionsInvalid::expired();
                 }

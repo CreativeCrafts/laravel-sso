@@ -7,11 +7,12 @@ namespace CreativeCrafts\LaravelSso\Http\Controllers\Admin;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
-use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
+use CreativeCrafts\LaravelSso\Exceptions\TenantNotFound;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\ConnectionStoreRequest;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\ConnectionUpdateRequest;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
+use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -27,7 +28,7 @@ final readonly class ConnectionsController
 
     public function index(Request $request, string $tenant): JsonResponse
     {
-        $tenantModel = $this->tenants->getByUlid($tenant);
+        $tenantModel = $this->resolveTenant($tenant);
 
         $items = $this->connections->listForTenant($tenantModel);
 
@@ -38,7 +39,7 @@ final readonly class ConnectionsController
 
     public function store(ConnectionStoreRequest $request, string $tenant): JsonResponse
     {
-        $tenantModel = $this->tenants->getByUlid($tenant);
+        $tenantModel = $this->resolveTenant($tenant);
 
         /** @var array<string, mixed> $payload */
         $payload = $request->validated();
@@ -69,7 +70,7 @@ final readonly class ConnectionsController
 
     public function show(Request $request, string $tenant, int $connection): JsonResponse
     {
-        $tenantModel = $this->tenants->getByUlid($tenant);
+        $tenantModel = $this->resolveTenant($tenant);
 
         $model = $this->connections->findForTenant($tenantModel, $connection);
 
@@ -84,7 +85,7 @@ final readonly class ConnectionsController
 
     public function update(ConnectionUpdateRequest $request, string $tenant, int $connection): JsonResponse
     {
-        $tenantModel = $this->tenants->getByUlid($tenant);
+        $tenantModel = $this->resolveTenant($tenant);
 
         /** @var array<string, mixed> $payload */
         $payload = $request->validated();
@@ -108,11 +109,13 @@ final readonly class ConnectionsController
             }
         }
 
-        try {
-            $model = $this->connections->updateForTenant($tenantModel, $connection, $payload);
-        } catch (TenantScopedRecordNotFound) {
+        $existing = $this->connections->findForTenant($tenantModel, $connection);
+
+        if (!$existing instanceof Connection) {
             abort(404);
         }
+
+        $model = $this->connections->updateForTenant($tenantModel, $connection, $payload);
 
         return response()->json([
           'data' => $this->toArray($model),
@@ -121,13 +124,15 @@ final readonly class ConnectionsController
 
     public function destroy(Request $request, string $tenant, int $connection): JsonResponse
     {
-        $tenantModel = $this->tenants->getByUlid($tenant);
+        $tenantModel = $this->resolveTenant($tenant);
 
-        try {
-            $this->connections->deleteForTenant($tenantModel, $connection);
-        } catch (TenantScopedRecordNotFound) {
+        $existing = $this->connections->findForTenant($tenantModel, $connection);
+
+        if (!$existing instanceof Connection) {
             abort(404);
         }
+
+        $this->connections->deleteForTenant($tenantModel, $connection);
 
         return response()->json([], Response::HTTP_NO_CONTENT);
     }
@@ -149,5 +154,14 @@ final readonly class ConnectionsController
           'guard' => $connection->guard !== null ? (string)$connection->guard : null,
           'settings' => $settings,
         ];
+    }
+
+    private function resolveTenant(string $tenant): Tenant
+    {
+        try {
+            return $this->tenants->getByUlid($tenant);
+        } catch (TenantNotFound) {
+            abort(404);
+        }
     }
 }

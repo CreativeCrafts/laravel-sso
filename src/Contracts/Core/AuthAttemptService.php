@@ -28,5 +28,10 @@ interface AuthAttemptService
     /**
      * Consume by state within the tenant scope (replay-safe). Returns the consumed attempt.
      */
-    public function consumeByState(Tenant $tenant, string $state): AuthAttempt;
+    public function consumeByState(
+        Tenant $tenant,
+        string $state,
+        ?int $expectedConnectionId = null,
+        ?int $expectedIdentityProviderId = null,
+    ): AuthAttempt;
 }

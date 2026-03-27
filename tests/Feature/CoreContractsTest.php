@@ -112,6 +112,31 @@ it('connection settings take precedence over package-wide allow defaults', funct
     expect($linking->allows($tenant, $connection, $identityProvider, $user, $claims))->toBeFalse();
 });
 
+it('treats null connection settings as disabled flags', function () {
+    $tenant = Tenant::query()->create(['ulid' => (string) Str::ulid()]);
+
+    $identityProvider = IdentityProvider::query()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Example',
+        'protocol' => 'oidc',
+        'enabled' => true,
+        'config' => [],
+    ]);
+
+    $connection = new Connection([
+        'settings' => null,
+    ]);
+
+    $claims = ['email' => 'a@b.test'];
+    $user = new AuthenticatableUser();
+
+    $provisioning = app(DefaultProvisioningPolicy::class);
+    expect($provisioning->allows($tenant, $connection, $identityProvider, $claims))->toBeFalse();
+
+    $linking = app(DefaultIdentityLinkPolicy::class);
+    expect($linking->allows($tenant, $connection, $identityProvider, $user, $claims))->toBeFalse();
+});
+
 it('explicit allow policies remain available for host applications', function () {
     $tenant = Tenant::query()->create(['ulid' => (string) Str::ulid()]);
 

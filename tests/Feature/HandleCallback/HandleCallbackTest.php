@@ -5,6 +5,7 @@ declare(strict_types=1);
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptAlreadyConsumed;
+use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Models\AuditLog;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
@@ -188,4 +189,53 @@ it('prevents replay by rejecting second consumption and writes a redacted failur
     $encoded = json_encode($failedAudit?->context, JSON_THROW_ON_ERROR);
 
     expect($encoded)->not->toContain($attempt->state);
+});
+
+it('does not consume auth attempts when connection binding mismatches', function () {
+    config()->set('sso.drivers', [
+        'oidc' => FakeOidcCallbackDriver::class,
+    ]);
+
+    $tenant = Tenant::query()->create(['ulid' => (string) Str::ulid(), 'name' => 'T1']);
+
+    $idp = IdentityProvider::query()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Okta',
+        'protocol' => 'oidc',
+        'enabled' => true,
+        'config' => [],
+    ]);
+
+    $rightConnection = Connection::query()->create([
+        'tenant_id' => $tenant->id,
+        'identity_provider_id' => $idp->id,
+        'name' => 'Default',
+        'enabled' => true,
+        'guard' => 'web',
+        'settings' => [],
+    ]);
+
+    $wrongConnection = Connection::query()->create([
+        'tenant_id' => $tenant->id,
+        'identity_provider_id' => $idp->id,
+        'name' => 'Other',
+        'enabled' => true,
+        'guard' => 'web',
+        'settings' => [],
+    ]);
+
+    $attempt = app(AuthAttemptService::class)->create(
+        tenant: $tenant,
+        protocol: 'oidc',
+        connection: $rightConnection,
+        identityProvider: $idp,
+    );
+
+    $request = Request::create('/sso/callback', 'GET', ['state' => $attempt->state]);
+
+    expect(fn () => app(HandleCallback::class)->handle($request, $tenant, $wrongConnection->id))
+        ->toThrow(InvalidAuthAttemptBinding::class);
+
+    $attempt->refresh();
+    expect($attempt->consumed_at)->toBeNull();
 });

@@ -9,6 +9,7 @@ Publish into your app:
 
 ```bash
 php artisan vendor:publish --tag=sso-ui
+```
 
 Default publish location:
 - resources/vendor/laravel-sso/ui

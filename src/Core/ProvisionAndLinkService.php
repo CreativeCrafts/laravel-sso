@@ -14,6 +14,7 @@ use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
+use CreativeCrafts\LaravelSso\Events\Dto\CallbackEventSummary;
 use CreativeCrafts\LaravelSso\Events\IdentityLinked;
 use CreativeCrafts\LaravelSso\Events\LoginCompleted;
 use CreativeCrafts\LaravelSso\Events\UserProvisioned;
@@ -67,6 +68,11 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             throw TenantScopedRecordNotFound::for(IdentityProvider::class, $identityProviderId);
         }
 
+        $eventCallback = CallbackEventSummary::fromResult(
+            $identityProvider->protocol !== '' ? $identityProvider->protocol : 'unknown',
+            $callback,
+        );
+
         /** @var array<string, mixed> $claims */
         $claims = $callback->claims;
 
@@ -104,13 +110,12 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
                 $this->events->dispatch(
                     new LoginCompleted(
-                        request: $request,
                         tenant: $tenant,
                         connection: $connection,
                         identityProvider: $identityProvider,
                         user: $linked,
                         guard: $guard,
-                        callback: $callback,
+                        callback: $eventCallback,
                     ),
                 );
 
@@ -142,14 +147,13 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             if ($externalIdentity->wasRecentlyCreated) {
                 $this->events->dispatch(
                     new IdentityLinked(
-                        request: $request,
                         tenant: $tenant,
                         connection: $connection,
                         identityProvider: $identityProvider,
                         externalIdentity: $externalIdentity,
                         user: $user,
                         guard: $guard,
-                        callback: $callback,
+                        callback: $eventCallback,
                     ),
                 );
             }
@@ -158,13 +162,12 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
             $this->events->dispatch(
                 new LoginCompleted(
-                    request: $request,
                     tenant: $tenant,
                     connection: $connection,
                     identityProvider: $identityProvider,
                     user: $user,
                     guard: $guard,
-                    callback: $callback,
+                    callback: $eventCallback,
                 ),
             );
 
@@ -183,13 +186,12 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
         $this->events->dispatch(
             new UserProvisioned(
-                request: $request,
                 tenant: $tenant,
                 connection: $connection,
                 identityProvider: $identityProvider,
                 user: $user,
                 guard: $guard,
-                callback: $callback,
+                callback: $eventCallback,
             ),
         );
 
@@ -206,14 +208,13 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         if ($externalIdentity->wasRecentlyCreated) {
             $this->events->dispatch(
                 new IdentityLinked(
-                    request: $request,
                     tenant: $tenant,
                     connection: $connection,
                     identityProvider: $identityProvider,
                     externalIdentity: $externalIdentity,
                     user: $user,
                     guard: $guard,
-                    callback: $callback,
+                    callback: $eventCallback,
                 ),
             );
         }
@@ -222,13 +223,12 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
         $this->events->dispatch(
             new LoginCompleted(
-                request: $request,
                 tenant: $tenant,
                 connection: $connection,
                 identityProvider: $identityProvider,
                 user: $user,
                 guard: $guard,
-                callback: $callback,
+                callback: $eventCallback,
             ),
         );
 

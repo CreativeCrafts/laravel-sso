@@ -122,9 +122,7 @@ final readonly class IdentityProvidersController
         /** @var array<string, mixed> $config */
         $config = is_array($idp->config) ? $idp->config : [];
 
-        if (array_key_exists('client_secret', $config)) {
-            $config['client_secret'] = '[redacted]';
-        }
+        $config = $this->redactConfig($config);
 
         return [
             'id' => (int) $idp->id,
@@ -134,5 +132,63 @@ final readonly class IdentityProvidersController
             'enabled' => (bool) $idp->enabled,
             'config' => $config,
         ];
+    }
+
+    /**
+     * @param array<mixed, mixed> $config
+     * @return array<mixed, mixed>
+     */
+    private function redactConfig(array $config): array
+    {
+        $sanitized = [];
+
+        foreach ($config as $key => $value) {
+            if (is_array($value)) {
+                $sanitized[$key] = $this->redactConfig($value);
+                continue;
+            }
+
+            if (!is_string($key)) {
+                $sanitized[$key] = $value;
+                continue;
+            }
+
+            $sanitized[$key] = $this->isSensitiveKey($key) ? '[redacted]' : $value;
+
+        }
+
+        return $sanitized;
+    }
+
+    private function isSensitiveKey(string $key): bool
+    {
+        $normalized = strtolower($key);
+
+        $exact = [
+            'client_secret',
+            'secret',
+            'shared_secret',
+            'private_key',
+            'signing_key',
+            'encryption_key',
+            'certificate',
+            'cert',
+            'api_key',
+            'app_key',
+            'app_secret',
+            'token',
+            'bearer_token',
+            'access_token',
+            'refresh_token',
+            'password',
+        ];
+
+        if (in_array($normalized, $exact, true)) {
+            return true;
+        }
+
+        return str_ends_with($normalized, '_secret')
+            || str_ends_with($normalized, '_token')
+            || str_ends_with($normalized, '_key');
     }
 }
