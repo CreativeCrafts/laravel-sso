@@ -241,7 +241,7 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         $issuerExpected = $this->expectedIssuer($identityProvider);
 
         $iss = $claims['iss'] ?? null;
-        if (!is_string($iss) || $iss === '' || $iss !== $issuerExpected) {
+        if (!is_string($iss) || $iss === '' || rtrim($iss, '/') !== $issuerExpected) {
             throw OidcIdTokenValidationFailed::make('iss mismatch');
         }
 

@@ -30,7 +30,7 @@ final class IdentityProvider extends Model
 
     protected $casts = [
       'enabled' => 'bool',
-      'config' => 'array',
+      'config' => 'encrypted:array',
     ];
 
     /**

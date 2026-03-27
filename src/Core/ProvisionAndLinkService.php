@@ -30,6 +30,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 final readonly class ProvisionAndLinkService implements ProvisionAndLink
@@ -86,6 +87,28 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
         $guard = $this->guards->selectGuard($tenant, $connection);
 
+        /** @var Authenticatable $authenticatedUser */
+        $authenticatedUser = DB::transaction(function () use ($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $guard, $eventCallback): Authenticatable {
+            return $this->resolveAndAuthenticate($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $guard, $eventCallback);
+        });
+
+        return $authenticatedUser;
+    }
+
+    /**
+     * @param array<string, mixed> $claims
+     */
+    private function resolveAndAuthenticate(
+        Tenant $tenant,
+        Connection $connection,
+        IdentityProvider $identityProvider,
+        string $subject,
+        ?string $email,
+        ?string $displayName,
+        array $claims,
+        string $guard,
+        CallbackEventSummary $eventCallback,
+    ): Authenticatable {
         $existingExternal = $this->externalIdentities->findForTenantProviderAndSubject(
             tenant: $tenant,
             identityProvider: $identityProvider,

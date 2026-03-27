@@ -4,6 +4,13 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso;
 
+use CreativeCrafts\LaravelSso\Console\Commands\SsoDoctorCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoInstallCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeConnectionCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeIdentityProviderCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeTenantCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoPruneCommand;
+use CreativeCrafts\LaravelSso\Contracts\Core\AuditContextSanitizer as AuditContextSanitizerContract;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\BeginLogin;
 use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
@@ -15,12 +22,6 @@ use CreativeCrafts\LaravelSso\Contracts\Core\UserLocator;
 use CreativeCrafts\LaravelSso\Contracts\Core\UserProvisioner;
 use CreativeCrafts\LaravelSso\Contracts\Policies\IdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
-use CreativeCrafts\LaravelSso\Console\Commands\SsoDoctorCommand;
-use CreativeCrafts\LaravelSso\Console\Commands\SsoInstallCommand;
-use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeConnectionCommand;
-use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeIdentityProviderCommand;
-use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeTenantCommand;
-use CreativeCrafts\LaravelSso\Console\Commands\SsoPruneCommand;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
@@ -38,8 +39,10 @@ use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
+use CreativeCrafts\LaravelSso\Core\AuditContextSanitizer;
 use CreativeCrafts\LaravelSso\Core\BeginLoginService;
 use CreativeCrafts\LaravelSso\Core\ConfigDriverRegistry;
+use CreativeCrafts\LaravelSso\Core\ConfigHelper;
 use CreativeCrafts\LaravelSso\Core\DbAuthAttemptService;
 use CreativeCrafts\LaravelSso\Core\DefaultGuardSelector;
 use CreativeCrafts\LaravelSso\Core\DefaultUserLocator;
@@ -74,8 +77,8 @@ use CreativeCrafts\LaravelSso\Repositories\EloquentTenantRepository;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\RateLimiter;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -83,8 +86,6 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 {
     public function configurePackage(Package $package): void
     {
-        $this->registerHelpers();
-
         $package
             ->name('laravel-sso')
             ->hasConfigFile('sso')
@@ -102,6 +103,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
     public function registeringPackage(): void
     {
+        $this->registerHelpers();
         $this->app->singleton(IdentityProviderRepository::class, EloquentIdentityProviderRepository::class);
         $this->app->singleton(ConnectionRepository::class, EloquentConnectionRepository::class);
         $this->app->singleton(TenantRepository::class, EloquentTenantRepository::class);
@@ -180,6 +182,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             );
         });
 
+        $this->app->singleton(AuditContextSanitizerContract::class, AuditContextSanitizer::class);
         $this->app->singleton(AuthAttemptService::class, DbAuthAttemptService::class);
         $this->app->singleton(DriverRegistry::class, ConfigDriverRegistry::class);
         $this->app->singleton(BeginLogin::class, BeginLoginService::class);
@@ -249,8 +252,8 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             return Limit::none();
         }
 
-        $maxAttempts = $this->positiveIntConfig("sso.throttling.{$configKey}.max_attempts", 60);
-        $decayMinutes = $this->positiveIntConfig("sso.throttling.{$configKey}.decay_minutes", 1);
+        $maxAttempts = ConfigHelper::positiveInt("sso.throttling.{$configKey}.max_attempts", 60);
+        $decayMinutes = ConfigHelper::positiveInt("sso.throttling.{$configKey}.decay_minutes", 1);
 
         return Limit::perMinutes($decayMinutes, $maxAttempts)
             ->by($this->throttleKey($limiterName, $request));
@@ -270,14 +273,4 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         ]);
     }
 
-    private function positiveIntConfig(string $key, int $default): int
-    {
-        $value = config($key);
-
-        if (is_int($value) && $value > 0) {
-            return $value;
-        }
-
-        return $default;
-    }
 }

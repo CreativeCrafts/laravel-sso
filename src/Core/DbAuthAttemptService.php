@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Core;
 
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
-use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptAlreadyConsumed;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptExpired;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptNotFound;
+use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
@@ -32,9 +32,9 @@ final class DbAuthAttemptService implements AuthAttemptService
         bool $withNonce = true,
         array $context = [],
     ): AuthAttempt {
-        $ttlSeconds = $this->positiveIntConfig('sso.attempts.ttl_seconds', 600);
-        $stateLength = $this->positiveIntConfig('sso.attempts.state_length', 64);
-        $nonceLength = $this->positiveIntConfig('sso.attempts.nonce_length', 64);
+        $ttlSeconds = ConfigHelper::positiveInt('sso.attempts.ttl_seconds', 600);
+        $stateLength = ConfigHelper::positiveInt('sso.attempts.state_length', 64);
+        $nonceLength = ConfigHelper::positiveInt('sso.attempts.nonce_length', 64);
 
         return AuthAttempt::query()->create([
           'tenant_id' => $tenant->id,
@@ -103,14 +103,4 @@ final class DbAuthAttemptService implements AuthAttemptService
         });
     }
 
-    private function positiveIntConfig(string $key, int $default): int
-    {
-        $value = config($key);
-
-        if (is_int($value) && $value > 0) {
-            return $value;
-        }
-
-        return $default;
-    }
 }

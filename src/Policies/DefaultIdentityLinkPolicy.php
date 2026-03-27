@@ -40,8 +40,11 @@ final readonly class DefaultIdentityLinkPolicy implements IdentityLinkPolicy
             return null;
         }
 
+        /** @var array<string, mixed>|null $rawSettings */
+        $rawSettings = $connection->settings;
+
         /** @var array<string, mixed> $settings */
-        $settings = $connection->settings;
+        $settings = is_array($rawSettings) ? $rawSettings : [];
 
         if (!array_key_exists($key, $settings)) {
             return null;

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Models;
 
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -66,39 +65,5 @@ final class Connection extends Model
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class, 'connection_id');
-    }
-
-    /**
-     * @return Attribute<array<string, mixed>, never>
-     */
-    protected function settings(): Attribute
-    {
-        /** @var Attribute<array<string, mixed>, never> $attribute */
-        $attribute = Attribute::get(
-            function (mixed $value): array {
-                if (is_array($value)) {
-                    return $value;
-                }
-
-                if (is_string($value) && $value !== '') {
-                    $decoded = json_decode($value, true);
-
-                    if (is_array($decoded)) {
-                        /** @var array<string, mixed> $normalized */
-                        $normalized = [];
-
-                        foreach ($decoded as $key => $item) {
-                            $normalized[(string) $key] = $item;
-                        }
-
-                        return $normalized;
-                    }
-                }
-
-                return [];
-            },
-        );
-
-        return $attribute;
     }
 }

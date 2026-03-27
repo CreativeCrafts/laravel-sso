@@ -43,16 +43,9 @@ final class EloquentTenantRepository implements TenantRepository
             return null;
         }
 
-        $tenant = Tenant::query()
-            ->where('metadata->domain', $host)
-            ->first();
-
-        if ($tenant instanceof Tenant) {
-            return $tenant;
-        }
-
         return Tenant::query()
-            ->whereJsonContains('metadata->domains', $host)
+            ->where('metadata->domain', $host)
+            ->orWhereJsonContains('metadata->domains', $host)
             ->first();
     }
 

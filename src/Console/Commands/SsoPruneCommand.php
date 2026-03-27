@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Console\Commands;
 
-use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\AuditLog;
+use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 final class SsoPruneCommand extends Command
 {
+    private const CHUNK_SIZE = 1000;
+
     protected $signature = 'sso:prune {--attempts-days=7} {--audit-days=30}';
 
     protected $description = 'Prune stale SSO auth attempts and audit logs.';
@@ -26,19 +29,15 @@ final class SsoPruneCommand extends Command
         $removedAudits = 0;
 
         if ($attemptsDays > 0) {
-            $attemptsResult = AuthAttempt::query()
-                ->where('created_at', '<', $now->copy()->subDays($attemptsDays))
-                ->delete();
-
-            $removedAttempts = is_int($attemptsResult) ? $attemptsResult : 0;
+            $removedAttempts = $this->chunkedDelete(
+                AuthAttempt::query()->where('created_at', '<', $now->copy()->subDays($attemptsDays)),
+            );
         }
 
         if ($auditDays > 0) {
-            $auditResult = AuditLog::query()
-                ->where('created_at', '<', $now->copy()->subDays($auditDays))
-                ->delete();
-
-            $removedAudits = is_int($auditResult) ? $auditResult : 0;
+            $removedAudits = $this->chunkedDelete(
+                AuditLog::query()->where('created_at', '<', $now->copy()->subDays($auditDays)),
+            );
         }
 
         $this->components->info(sprintf(
@@ -48,6 +47,22 @@ final class SsoPruneCommand extends Command
         ));
 
         return self::SUCCESS;
+    }
+
+    /**
+     * @param Builder<AuthAttempt>|Builder<AuditLog> $query
+     */
+    private function chunkedDelete(Builder $query): int
+    {
+        $totalDeleted = 0;
+
+        do {
+            $deleted = $query->limit(self::CHUNK_SIZE)->delete();
+            $deleted = is_int($deleted) ? $deleted : 0;
+            $totalDeleted += $deleted;
+        } while ($deleted >= self::CHUNK_SIZE);
+
+        return $totalDeleted;
     }
 
     private function optionInt(string $name): int

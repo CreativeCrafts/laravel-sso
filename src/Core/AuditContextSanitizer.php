@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Core;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\AuditContextSanitizer as AuditContextSanitizerContract;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
 use Illuminate\Contracts\Config\Repository as Config;
 use Throwable;
 
-final readonly class AuditContextSanitizer
+final readonly class AuditContextSanitizer implements AuditContextSanitizerContract
 {
     public function __construct(private Config $config)
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Core;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\AuditContextSanitizer;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
@@ -11,9 +12,9 @@ use CreativeCrafts\LaravelSso\Contracts\Repositories\AuditLogRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
-use CreativeCrafts\LaravelSso\Events\Dto\CallbackEventSummary;
 use CreativeCrafts\LaravelSso\Events\CallbackFailed;
 use CreativeCrafts\LaravelSso\Events\CallbackSucceeded;
+use CreativeCrafts\LaravelSso\Events\Dto\CallbackEventSummary;
 use CreativeCrafts\LaravelSso\Exceptions\CallbackStateMissing;
 use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
@@ -22,6 +23,7 @@ use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
 use Throwable;
 
 final readonly class HandleCallbackService implements HandleCallback
@@ -34,6 +36,7 @@ final readonly class HandleCallbackService implements HandleCallback
         private AuditContextSanitizer $auditContexts,
         private AuditLogRepository $auditLogs,
         private Dispatcher $events,
+        private LoggerInterface $logger,
     ) {
     }
 
@@ -90,13 +93,19 @@ final readonly class HandleCallbackService implements HandleCallback
 
             $result = $driver->handleCallback($request, $tenant, $connection, $attempt);
 
-            $this->auditSucceeded(
-                tenant: $tenant,
-                connection: $connection,
-                identityProvider: $identityProvider,
-                authAttemptId: $attempt->id,
-                context: $this->auditContexts->sanitizeSuccess($protocol, $result),
-            );
+            try {
+                $this->auditSucceeded(
+                    tenant: $tenant,
+                    connection: $connection,
+                    identityProvider: $identityProvider,
+                    authAttemptId: $attempt->id,
+                    context: $this->auditContexts->sanitizeSuccess($protocol, $result),
+                );
+            } catch (Throwable $auditException) {
+                $this->logger->error('SSO audit log (success) failed', [
+                    'exception' => $auditException->getMessage(),
+                ]);
+            }
 
             $this->events->dispatch(
                 new CallbackSucceeded(
@@ -110,17 +119,23 @@ final readonly class HandleCallbackService implements HandleCallback
 
             return $result;
         } catch (Throwable $e) {
-            $this->auditFailed(
-                tenant: $tenant,
-                connectionId: $connectionId,
-                identityProviderId: $identityProvider?->id,
-                authAttemptId: $attempt?->id,
-                context: $this->auditContexts->sanitizeFailure(
-                    exception: $e,
-                    state: $state,
-                    protocol: $protocol ?? $attempt?->protocol,
-                ),
-            );
+            try {
+                $this->auditFailed(
+                    tenant: $tenant,
+                    connectionId: $connectionId,
+                    identityProviderId: $identityProvider?->id,
+                    authAttemptId: $attempt?->id,
+                    context: $this->auditContexts->sanitizeFailure(
+                        exception: $e,
+                        state: $state,
+                        protocol: $protocol ?? $attempt?->protocol,
+                    ),
+                );
+            } catch (Throwable $auditException) {
+                $this->logger->error('SSO audit log (failure) failed', [
+                    'exception' => $auditException->getMessage(),
+                ]);
+            }
 
             $this->events->dispatch(
                 new CallbackFailed(
