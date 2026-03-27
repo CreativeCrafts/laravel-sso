@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Artisan;
 
 final class SsoInstallCommand extends Command
 {
-    protected $signature = 'sso:install {--force : Overwrite existing published files}';
+    protected $signature = 'sso:install {--force : Overwrite existing published files} {--run-migrations : Also run database migrations after publishing}';
 
     protected $description = 'Publish Laravel SSO config, migrations, and UI assets with sensible defaults.';
 
@@ -29,12 +29,14 @@ final class SsoInstallCommand extends Command
             return self::FAILURE;
         }
 
-        $this->components->info('Running database migrations...');
-        $migrateExit = Artisan::call('migrate', ['--force' => true]);
+        if ($this->option('run-migrations')) {
+            $this->components->info('Running database migrations...');
+            $migrateExit = Artisan::call('migrate', ['--force' => true]);
 
-        if ($migrateExit !== 0) {
-            $this->components->error('Database migrations failed.');
-            return self::FAILURE;
+            if ($migrateExit !== 0) {
+                $this->components->error('Database migrations failed.');
+                return self::FAILURE;
+            }
         }
 
         $this->components->info('Laravel SSO installation complete.');
