@@ -9,7 +9,6 @@ use CreativeCrafts\LaravelSso\Contracts\Core\SsoDriver;
 use CreativeCrafts\LaravelSso\Exceptions\UnsupportedSsoProtocol;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\Container\Container;
-use Illuminate\Support\Facades\Config;
 
 final readonly class ConfigDriverRegistry implements DriverRegistry
 {
@@ -23,7 +22,11 @@ final readonly class ConfigDriverRegistry implements DriverRegistry
      */
     public function get(string $protocol): SsoDriver
     {
-        $map = Config::array(key: 'sso.drivers', default: []);
+        $map = config('sso.drivers', []);
+
+        if (!is_array($map)) {
+            $map = [];
+        }
 
         $driverClass = $map[$protocol] ?? null;
 

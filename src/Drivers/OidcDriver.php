@@ -208,9 +208,18 @@ final readonly class OidcDriver implements SsoDriver
 
             $rawClaims = $this->idTokens->validate($identityProvider, $attempt, $idToken);
 
+            $idTokenSubject = $rawClaims['sub'] ?? null;
+            $idTokenSubject = is_string($idTokenSubject) && $idTokenSubject !== '' ? $idTokenSubject : null;
+
             $userinfoEnabled = $this->userinfoEnabled($identityProvider);
             if ($userinfoEnabled && $accessToken !== null && $ep->userinfoEndpoint !== null) {
                 $userinfoClaims = $this->fetchUserinfo($ep->userinfoEndpoint, $accessToken, $timeout);
+
+                $userinfoSub = $userinfoClaims['sub'] ?? null;
+                if (is_string($userinfoSub) && $userinfoSub !== '' && $idTokenSubject !== null && $userinfoSub !== $idTokenSubject) {
+                    throw OidcUserinfoFailed::make('userinfo subject mismatch');
+                }
+
                 $rawClaims = array_merge($rawClaims, $userinfoClaims);
             }
 

@@ -68,7 +68,6 @@ use CreativeCrafts\LaravelSso\Repositories\EloquentTenantRepository;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\RateLimiter;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
@@ -123,9 +122,12 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         });
 
         $this->app->singleton(HeaderTenantResolver::class, function (Container $app): HeaderTenantResolver {
+            $headerName = config('sso.tenancy.header.name', 'X-SSO-Tenant');
+            $headerName = is_string($headerName) && $headerName !== '' ? $headerName : 'X-SSO-Tenant';
+
             return new HeaderTenantResolver(
                 enabled: (bool) config('sso.tenancy.header.enabled', false),
-                headerName: Config::string('sso.tenancy.header.name', 'X-SSO-Tenant'),
+                headerName: $headerName,
                 tenants: $app->make(TenantRepository::class),
             );
         });
@@ -214,10 +216,8 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             return Limit::none();
         }
 
-        $maxAttempts = Config::integer("sso.throttling.{$configKey}.max_attempts", 60);
-        $decayMinutes = Config::integer("sso.throttling.{$configKey}.decay_minutes", 1);
-        $maxAttempts = $maxAttempts > 0 ? $maxAttempts : 60;
-        $decayMinutes = $decayMinutes > 0 ? $decayMinutes : 1;
+        $maxAttempts = $this->positiveIntConfig("sso.throttling.{$configKey}.max_attempts", 60);
+        $decayMinutes = $this->positiveIntConfig("sso.throttling.{$configKey}.decay_minutes", 1);
 
         return Limit::perMinutes($decayMinutes, $maxAttempts)
             ->by($this->throttleKey($limiterName, $request));
@@ -235,5 +235,16 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             is_scalar($connection) ? (string) $connection : 'unknown-connection',
             $ip,
         ]);
+    }
+
+    private function positiveIntConfig(string $key, int $default): int
+    {
+        $value = config($key);
+
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+
+        return $default;
     }
 }

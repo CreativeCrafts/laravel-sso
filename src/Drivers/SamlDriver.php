@@ -15,12 +15,16 @@ use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
+use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
+use DOMElement;
+use DOMXPath;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Config;
 use RuntimeException;
 
 final readonly class SamlDriver implements SsoDriver
 {
+    private const string NS_SAML_PROTOCOL = 'urn:oasis:names:tc:SAML:2.0:protocol';
+
     public function __construct(
         private SamlSignatureValidator $signatures,
         private SamlAssertionConditionsValidator $conditions,
@@ -66,8 +70,13 @@ final readonly class SamlDriver implements SsoDriver
         $configuredEntityId = config('sso.saml.sp.entity_id');
         $issuer = is_string($configuredEntityId) && $configuredEntityId !== '' ? $configuredEntityId : $metadataUrl;
 
+        $requestId = $this->requestIdFromAttempt($attempt);
+
+        if ($requestId === null) {
+            throw new RuntimeException('SAML auth attempt is missing request ID.');
+        }
+
         $issueInstant = now('UTC')->format('Y-m-d\TH:i:s\Z');
-        $requestId = '_' . bin2hex(random_bytes(16));
 
         $authnRequestXml = $this->buildAuthnRequestXml(
             requestId: $requestId,
@@ -135,6 +144,22 @@ final readonly class SamlDriver implements SsoDriver
 
         $signed = $this->signatures->validate($xml, $signingCertsPem);
 
+        $requestId = $this->requestIdFromAttempt($attempt);
+
+        if ($requestId === null) {
+            throw SamlAcsRequestInvalid::missingRequestId();
+        }
+
+        $inResponseTo = $this->extractInResponseTo($signed);
+
+        if ($inResponseTo === null) {
+            throw SamlAcsRequestInvalid::correlationMissing();
+        }
+
+        if ($inResponseTo !== $requestId) {
+            throw SamlAcsRequestInvalid::correlationMismatch();
+        }
+
         $acsUrl = route('sso.saml.acs', [
             'tenant' => $tenant->ulid,
             'connection' => (string) $connection->id,
@@ -148,12 +173,14 @@ final readonly class SamlDriver implements SsoDriver
         $entityId = config('sso.saml.sp.entity_id');
         $expectedAudience = is_string($entityId) && $entityId !== '' ? $entityId : $metadataUrl;
 
+        $clockSkewSeconds = $this->nonNegativeIntConfig('sso.saml.clock_skew_seconds', 60);
+
         $this->conditions->validate(
             signed: $signed,
             expectedAudience: $expectedAudience,
             expectedRecipient: $acsUrl,
             expectedDestination: $acsUrl,
-            clockSkewSeconds: Config::integer('sso.saml.clock_skew_seconds', 60),
+            clockSkewSeconds: $clockSkewSeconds,
             requireAudience: (bool) config('sso.saml.require_audience', true),
             requireRecipient: (bool) config('sso.saml.require_recipient', true),
             requireDestination: (bool) config('sso.saml.require_destination', true),
@@ -174,6 +201,49 @@ final readonly class SamlDriver implements SsoDriver
             ],
             error: null,
         );
+    }
+
+    private function requestIdFromAttempt(AuthAttempt $attempt): ?string
+    {
+        /** @var array<string, mixed> $context */
+        $context = $attempt->context;
+
+        $requestId = $context['saml_request_id'] ?? null;
+
+        return is_string($requestId) && $requestId !== '' ? $requestId : null;
+    }
+
+    private function extractInResponseTo(SamlSignedXml $signed): ?string
+    {
+        $xpath = new DOMXPath($signed->document);
+        $xpath->registerNamespace('samlp', self::NS_SAML_PROTOCOL);
+
+        $nodes = $xpath->query('/samlp:Response');
+
+        if ($nodes === false || $nodes->length < 1) {
+            return null;
+        }
+
+        $node = $nodes->item(0);
+
+        if (!$node instanceof DOMElement) {
+            return null;
+        }
+
+        $value = $node->getAttribute('InResponseTo');
+
+        return $value !== '' ? $value : null;
+    }
+
+    private function nonNegativeIntConfig(string $key, int $default): int
+    {
+        $value = config($key);
+
+        if (is_int($value) && $value >= 0) {
+            return $value;
+        }
+
+        return $default;
     }
 
     private function buildAuthnRequestXml(

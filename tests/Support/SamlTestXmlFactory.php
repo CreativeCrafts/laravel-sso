@@ -64,6 +64,7 @@ final class SamlTestXmlFactory
         string $privateKeyPem,
         string $publicCertPem,
         array $attributes = [],
+        ?string $inResponseTo = null,
     ): string {
         $doc = new DOMDocument('1.0', 'UTF-8');
         $doc->preserveWhiteSpace = false;
@@ -73,6 +74,9 @@ final class SamlTestXmlFactory
         $response->setAttribute('ID', '_resp');
         $response->setAttribute('Version', '2.0');
         $response->setAttribute('Destination', $destination);
+        if (is_string($inResponseTo) && $inResponseTo !== '') {
+            $response->setAttribute('InResponseTo', $inResponseTo);
+        }
         $doc->appendChild($response);
 
         $responseIssuer = $doc->createElementNS('urn:oasis:names:tc:SAML:2.0:assertion', 'saml:Issuer');
@@ -101,6 +105,9 @@ final class SamlTestXmlFactory
 
         $subjectConfirmationData = $doc->createElementNS('urn:oasis:names:tc:SAML:2.0:assertion', 'saml:SubjectConfirmationData');
         $subjectConfirmationData->setAttribute('Recipient', $recipient);
+        if (is_string($inResponseTo) && $inResponseTo !== '') {
+            $subjectConfirmationData->setAttribute('InResponseTo', $inResponseTo);
+        }
         $subjectConfirmationData->setAttribute('NotOnOrAfter', $notOnOrAfterIso);
         $subjectConfirmation->appendChild($subjectConfirmationData);
 

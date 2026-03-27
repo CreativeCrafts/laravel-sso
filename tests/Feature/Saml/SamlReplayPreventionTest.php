@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelSso\Models\Connection;
+use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use CreativeCrafts\LaravelSso\Tests\Fixtures\User;
@@ -63,14 +64,23 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
 
     $location = (string) $redirectResponse->headers->get('Location');
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
-    $relayState = $query['RelayState'] ?? null;
+$relayState = $query['RelayState'] ?? null;
 
-    expect($relayState)->toBeString()->not->toBe('');
+expect($relayState)->toBeString()->not->toBe('');
 
-    $acsUrl = route('sso.saml.acs', [
-        'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
-    ], true);
+$attempt = AuthAttempt::query()
+    ->where('tenant_id', $tenant->id)
+    ->where('state', $relayState)
+    ->first();
+
+$requestId = $attempt?->context['saml_request_id'] ?? null;
+
+expect($requestId)->toBeString()->not->toBe('');
+
+$acsUrl = route('sso.saml.acs', [
+    'tenant' => $tenant->ulid,
+    'connection' => (string) $connection->id,
+], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
@@ -83,6 +93,7 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
         destination: $acsUrl,
         recipient: $acsUrl,
         audience: $audience,
+        inResponseTo: (string) $requestId,
         notBeforeIso: now('UTC')->subSeconds(30)->format('Y-m-d\TH:i:s\Z'),
         notOnOrAfterIso: now('UTC')->addMinutes(5)->format('Y-m-d\TH:i:s\Z'),
         privateKeyPem: $keys['private'],
