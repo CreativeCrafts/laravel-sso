@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelSso\Console\Commands\SsoInstallCommand;
 use CreativeCrafts\LaravelSso\Tests\TestCase;
 
 uses(TestCase::class);

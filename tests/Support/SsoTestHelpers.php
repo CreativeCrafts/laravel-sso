@@ -7,13 +7,14 @@ namespace CreativeCrafts\LaravelSso\Tests\Support;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
+use Str;
 
 trait SsoTestHelpers
 {
     protected function createTenant(string $name = 'Test Tenant'): Tenant
     {
         return Tenant::query()->create([
-            'ulid' => (string) \Str::ulid(),
+            'ulid' => (string) Str::ulid(),
             'name' => $name,
             'metadata' => [],
         ]);

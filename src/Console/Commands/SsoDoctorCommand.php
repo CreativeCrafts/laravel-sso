@@ -48,14 +48,13 @@ final class SsoDoctorCommand extends Command
                 'ok' => $issues === [],
                 'issues' => $issues,
             ];
-            $this->line(json_encode($payload, JSON_PRETTY_PRINT));
+            $encoded = json_encode($payload, JSON_PRETTY_PRINT);
+            $this->line($encoded !== false ? $encoded : '{}');
+        } elseif ($issues === []) {
+            $this->components->info('No blocking issues detected.');
         } else {
-            if ($issues === []) {
-                $this->components->info('No blocking issues detected.');
-            } else {
-                foreach ($issues as $issue) {
-                    $this->components->warn($issue);
-                }
+            foreach ($issues as $issue) {
+                $this->components->warn($issue);
             }
         }
 

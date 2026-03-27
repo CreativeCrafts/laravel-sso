@@ -17,14 +17,30 @@ final class SsoMakeConnectionCommand extends Command
 
     public function handle(): int
     {
-        $tenant = Tenant::query()->where('ulid', $this->argument('tenant_ulid'))->first();
+        $tenantUlid = $this->argument('tenant_ulid');
 
-        if (!$tenant instanceof Tenant) {
-            $this->components->error('Tenant not found for ULID: ' . $this->argument('tenant_ulid'));
+        if (!is_string($tenantUlid) || $tenantUlid === '') {
+            $this->components->error('Tenant ULID must be a non-empty string.');
             return self::FAILURE;
         }
 
-        $idp = IdentityProvider::query()->where('tenant_id', $tenant->id)->find($this->argument('idp_id'));
+        $tenant = Tenant::query()->where('ulid', $tenantUlid)->first();
+
+        if (!$tenant instanceof Tenant) {
+            $this->components->error('Tenant not found for ULID: ' . $tenantUlid);
+            return self::FAILURE;
+        }
+
+        $idpArg = $this->argument('idp_id');
+
+        if (!is_int($idpArg) && !(is_string($idpArg) && ctype_digit($idpArg))) {
+            $this->components->error('Identity provider id must be an integer.');
+            return self::FAILURE;
+        }
+
+        $idpId = (int) $idpArg;
+
+        $idp = IdentityProvider::query()->where('tenant_id', $tenant->id)->find($idpId);
 
         if (!$idp instanceof IdentityProvider) {
             $this->components->error('Identity provider not found for this tenant.');

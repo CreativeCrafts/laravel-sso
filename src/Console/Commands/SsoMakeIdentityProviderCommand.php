@@ -16,10 +16,17 @@ final class SsoMakeIdentityProviderCommand extends Command
 
     public function handle(): int
     {
-        $tenant = Tenant::query()->where('ulid', $this->argument('tenant_ulid'))->first();
+        $tenantUlid = $this->argument('tenant_ulid');
+
+        if (!is_string($tenantUlid) || $tenantUlid === '') {
+            $this->components->error('Tenant ULID must be a non-empty string.');
+            return self::FAILURE;
+        }
+
+        $tenant = Tenant::query()->where('ulid', $tenantUlid)->first();
 
         if (!$tenant instanceof Tenant) {
-            $this->components->error('Tenant not found for ULID: ' . $this->argument('tenant_ulid'));
+            $this->components->error('Tenant not found for ULID: ' . $tenantUlid);
             return self::FAILURE;
         }
 
