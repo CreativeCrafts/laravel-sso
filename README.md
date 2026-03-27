@@ -20,6 +20,7 @@ See `composer.json` for the authoritative runtime constraints.
 For operator-facing and release-facing guidance, see:
 
 - [Operator Guide](docs/operator-guide.md)
+- [Getting Started](docs/getting-started.md)
 - [Error Catalog](docs/error-catalog.md)
 - [Deployment Guide](docs/deployment-guide.md)
 - [Troubleshooting Guide](docs/troubleshooting.md)

@@ -15,6 +15,11 @@ use CreativeCrafts\LaravelSso\Contracts\Core\UserLocator;
 use CreativeCrafts\LaravelSso\Contracts\Core\UserProvisioner;
 use CreativeCrafts\LaravelSso\Contracts\Policies\IdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoDoctorCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoInstallCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeConnectionCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeIdentityProviderCommand;
+use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeTenantCommand;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
@@ -69,6 +74,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Blade;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -76,10 +82,20 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 {
     public function configurePackage(Package $package): void
     {
+        $this->registerHelpers();
+
         $package
             ->name('laravel-sso')
             ->hasConfigFile('sso')
-            ->hasMigration('create_sso_tables');
+            ->hasMigration('create_sso_tables')
+            ->hasViews()
+            ->hasCommands([
+                SsoInstallCommand::class,
+                SsoDoctorCommand::class,
+                SsoMakeTenantCommand::class,
+                SsoMakeIdentityProviderCommand::class,
+                SsoMakeConnectionCommand::class,
+            ]);
     }
 
     public function registeringPackage(): void
@@ -192,6 +208,17 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
         if (config('sso.ui.enabled', false)) {
             $this->loadRoutesFrom(__DIR__ . '/../routes/admin.php');
+        }
+
+        Blade::component('laravel-sso::components.sso-button', 'sso-button');
+    }
+
+    private function registerHelpers(): void
+    {
+        $helpers = __DIR__ . '/helpers.php';
+
+        if (file_exists($helpers)) {
+            require_once $helpers;
         }
     }
 

@@ -5,6 +5,30 @@ declare(strict_types=1);
 use CreativeCrafts\LaravelSso\Drivers\OidcDriver;
 use CreativeCrafts\LaravelSso\Drivers\SamlDriver;
 
+/**
+ * @return array{
+ *     enabled: bool,
+ *     routes: array{enabled: bool, prefix: string, middleware: array<int, string>},
+ *     ui: array{enabled: bool, prefix: string, middleware: array<int, string>, gate: string},
+ *     tenancy: array{
+ *         route_param: string,
+ *         default_tenant_ulid?: string|null,
+ *         throw_if_missing: bool,
+ *         header: array{enabled: bool, name: string},
+ *         host: array{enabled: bool, mode: string, base_domain?: string|null}
+ *     },
+ *     guards: array{default?: string|null, allowed: array<int, string>},
+ *     drivers: array<string, class-string>,
+ *     attempts: array{ttl_seconds: int, state_length: int, nonce_length: int, code_verifier_length: int},
+ *     provisioning: array{email_column: string, name_column: string, enabled_by_default: bool, connection_setting_key: string},
+ *     throttling: array<string, array{enabled: bool, max_attempts: int, decay_minutes: int}>,
+ *     linking: array{enabled_by_default: bool, connection_setting_key: string},
+ *     audit: array<string, int|string|bool>,
+ *     oidc: array<string, mixed>,
+ *     saml: array<string, mixed>
+ * }
+ */
+
 return [
     'enabled' => env('SSO_ENABLED', true),
 
