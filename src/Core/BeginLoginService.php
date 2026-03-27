@@ -40,11 +40,19 @@ final readonly class BeginLoginService implements BeginLogin
             throw TenantScopedRecordNotFound::for(Connection::class, $connectionId);
         }
 
+        if ($connection->enabled === false) {
+            throw TenantScopedRecordNotFound::for(Connection::class, $connectionId);
+        }
+
         $identityProviderId = $connection->identity_provider_id;
 
         $identityProvider = $this->identityProviders->findForTenant($tenant, $identityProviderId);
 
         if (!$identityProvider instanceof IdentityProvider) {
+            throw TenantScopedRecordNotFound::for(IdentityProvider::class, $identityProviderId);
+        }
+
+        if ($identityProvider->enabled === false) {
             throw TenantScopedRecordNotFound::for(IdentityProvider::class, $identityProviderId);
         }
 
@@ -66,6 +74,7 @@ final readonly class BeginLoginService implements BeginLogin
 
         $codeVerifier = null;
         $withNonce = false;
+        $attemptContext = [];
 
         if ($protocol === 'oidc') {
             $withNonce = true;
@@ -76,6 +85,10 @@ final readonly class BeginLoginService implements BeginLogin
             $codeVerifier = Str::random($len);
         }
 
+        if ($protocol === 'saml') {
+            $attemptContext['saml_request_id'] = '_' . bin2hex(random_bytes(16));
+        }
+
         $attempt = $this->attempts->create(
             tenant: $tenant,
             protocol: $protocol,
@@ -84,6 +97,7 @@ final readonly class BeginLoginService implements BeginLogin
             redirectTo: $redirectTo,
             codeVerifier: $codeVerifier,
             withNonce: $withNonce,
+            context: $attemptContext,
         );
 
         $this->events->dispatch(

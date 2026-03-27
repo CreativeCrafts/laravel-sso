@@ -200,17 +200,17 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
     private function asn1Length(int $length): string
     {
         if ($length < 0x80) {
-            return chr($length);
+            return $this->chrByte($length);
         }
 
         $out = '';
 
         while ($length > 0) {
-            $out = chr($length & 0xFF) . $out;
+            $out = $this->chrByte($length & 0xFF) . $out;
             $length >>= 8;
         }
 
-        return chr(0x80 | strlen($out)) . $out;
+        return $this->chrByte(0x80 | strlen($out)) . $out;
     }
 
     private function asn1Integer(string $bytes): string
@@ -224,6 +224,13 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         }
 
         return "\x02" . $this->asn1Length(strlen($bytes)) . $bytes;
+    }
+
+    private function chrByte(int $value): string
+    {
+        $byte = $value & 0xFF;
+
+        return chr($byte);
     }
 
     /**

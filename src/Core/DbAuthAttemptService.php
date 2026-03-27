@@ -12,7 +12,6 @@ use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -32,9 +31,9 @@ final class DbAuthAttemptService implements AuthAttemptService
         bool $withNonce = true,
         array $context = [],
     ): AuthAttempt {
-        $ttlSeconds = Config::integer(key: 'sso.attempts.ttl_seconds', default: 600);
-        $stateLength = Config::integer(key: 'sso.attempts.state_length', default: 64);
-        $nonceLength = Config::integer(key: 'sso.attempts.nonce_length', default: 64);
+        $ttlSeconds = $this->positiveIntConfig('sso.attempts.ttl_seconds', 600);
+        $stateLength = $this->positiveIntConfig('sso.attempts.state_length', 64);
+        $nonceLength = $this->positiveIntConfig('sso.attempts.nonce_length', 64);
 
         return AuthAttempt::query()->create([
           'tenant_id' => $tenant->id,
@@ -83,5 +82,16 @@ final class DbAuthAttemptService implements AuthAttemptService
 
             return $attempt->refresh();
         });
+    }
+
+    private function positiveIntConfig(string $key, int $default): int
+    {
+        $value = config($key);
+
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+
+        return $default;
     }
 }

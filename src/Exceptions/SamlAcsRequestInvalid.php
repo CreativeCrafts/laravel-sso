@@ -22,4 +22,19 @@ final class SamlAcsRequestInvalid extends RuntimeException
     {
         return new self('SAMLResponse is not valid XML.');
     }
+
+    public static function missingRequestId(): self
+    {
+        return new self('SAML AuthnRequest correlation id is missing.');
+    }
+
+    public static function correlationMissing(): self
+    {
+        return new self('SAMLResponse is missing InResponseTo for correlation.');
+    }
+
+    public static function correlationMismatch(): self
+    {
+        return new self('SAMLResponse InResponseTo does not match the original AuthnRequest.');
+    }
 }
