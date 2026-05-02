@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptAlreadyConsumed;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptExpired;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptNotFound;
+use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptValidationInProgress;
 use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\Connection;
@@ -49,10 +50,100 @@ final class DbAuthAttemptService implements AuthAttemptService
           'redirect_to' => $redirectTo,
           'expires_at' => now()->addSeconds($ttlSeconds),
           'consumed_at' => null,
+          'status' => AuthAttempt::STATUS_PENDING,
+          'validating_at' => null,
+          'failed_at' => null,
           'ip' => $this->boundedString($ip, 255),
           'user_agent' => $this->boundedString($userAgent, 1024),
           'context' => $context,
         ]);
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function reserveForValidation(
+        Tenant $tenant,
+        string $state,
+        ?int $expectedConnectionId = null,
+        ?int $expectedIdentityProviderId = null,
+    ): AuthAttempt {
+        return DB::transaction(function () use ($tenant, $state, $expectedConnectionId, $expectedIdentityProviderId): AuthAttempt {
+            $attempt = $this->lockedAttempt($tenant, $state);
+
+            $this->assertAttemptUsable($attempt, $state, $expectedConnectionId, $expectedIdentityProviderId);
+
+            if ($attempt->isValidating()) {
+                throw AuthAttemptValidationInProgress::forState($state);
+            }
+
+            $attempt->forceFill([
+              'status' => AuthAttempt::STATUS_VALIDATING,
+              'validating_at' => now(),
+            ])->save();
+
+            return $attempt->refresh();
+        });
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function markConsumed(AuthAttempt $attempt): AuthAttempt
+    {
+        return DB::transaction(static function () use ($attempt): AuthAttempt {
+            /** @var AuthAttempt|null $locked */
+            $locked = AuthAttempt::query()
+              ->whereKey($attempt->id)
+              ->lockForUpdate()
+              ->first();
+
+            if (!$locked instanceof AuthAttempt) {
+                throw AuthAttemptNotFound::forState($attempt->state);
+            }
+
+            if ($locked->isConsumed()) {
+                throw AuthAttemptAlreadyConsumed::forState($locked->state);
+            }
+
+            $locked->forceFill([
+              'status' => AuthAttempt::STATUS_CONSUMED,
+              'consumed_at' => now(),
+              'validating_at' => null,
+            ])->save();
+
+            return $locked->refresh();
+        });
+    }
+
+    /**
+     * @throws Throwable
+     */
+    public function markValidationFailed(AuthAttempt $attempt): AuthAttempt
+    {
+        return DB::transaction(static function () use ($attempt): AuthAttempt {
+            /** @var AuthAttempt|null $locked */
+            $locked = AuthAttempt::query()
+              ->whereKey($attempt->id)
+              ->lockForUpdate()
+              ->first();
+
+            if (!$locked instanceof AuthAttempt) {
+                throw AuthAttemptNotFound::forState($attempt->state);
+            }
+
+            if ($locked->isConsumed()) {
+                return $locked->refresh();
+            }
+
+            $locked->forceFill([
+              'status' => AuthAttempt::STATUS_PENDING,
+              'validating_at' => null,
+              'failed_at' => now(),
+            ])->save();
+
+            return $locked->refresh();
+        });
     }
 
     /**
@@ -64,45 +155,59 @@ final class DbAuthAttemptService implements AuthAttemptService
         ?int $expectedConnectionId = null,
         ?int $expectedIdentityProviderId = null,
     ): AuthAttempt {
-        return DB::transaction(static function () use ($tenant, $state, $expectedConnectionId, $expectedIdentityProviderId): AuthAttempt {
-            $attempt = AuthAttempt::query()
-              ->where('tenant_id', $tenant->id)
-              ->where('state', $state)
-              ->lockForUpdate()
-              ->first();
+        $attempt = $this->reserveForValidation(
+            tenant: $tenant,
+            state: $state,
+            expectedConnectionId: $expectedConnectionId,
+            expectedIdentityProviderId: $expectedIdentityProviderId,
+        );
 
-            if ($attempt === null) {
-                throw AuthAttemptNotFound::forState($state);
-            }
+        return $this->markConsumed($attempt);
+    }
 
-            if ($attempt->isConsumed()) {
-                throw AuthAttemptAlreadyConsumed::forState($state);
-            }
+    private function lockedAttempt(Tenant $tenant, string $state): AuthAttempt
+    {
+        /** @var AuthAttempt|null $attempt */
+        $attempt = AuthAttempt::query()
+          ->where('tenant_id', $tenant->id)
+          ->where('state', $state)
+          ->lockForUpdate()
+          ->first();
 
-            if ($attempt->isExpired(now())) {
-                throw AuthAttemptExpired::forState($state);
-            }
+        if (!$attempt instanceof AuthAttempt) {
+            throw AuthAttemptNotFound::forState($state);
+        }
 
-            if ($expectedConnectionId !== null && $attempt->connection_id !== null && (int) $attempt->connection_id !== $expectedConnectionId) {
-                throw InvalidAuthAttemptBinding::connectionMismatch(
-                    expected: (int) $attempt->connection_id,
-                    actual: $expectedConnectionId,
-                );
-            }
+        return $attempt;
+    }
 
-            if ($expectedIdentityProviderId !== null && $attempt->identity_provider_id !== null && (int) $attempt->identity_provider_id !== $expectedIdentityProviderId) {
-                throw InvalidAuthAttemptBinding::identityProviderMismatch(
-                    expected: (int) $attempt->identity_provider_id,
-                    actual: $expectedIdentityProviderId,
-                );
-            }
+    private function assertAttemptUsable(
+        AuthAttempt $attempt,
+        string $state,
+        ?int $expectedConnectionId,
+        ?int $expectedIdentityProviderId,
+    ): void {
+        if ($attempt->isConsumed()) {
+            throw AuthAttemptAlreadyConsumed::forState($state);
+        }
 
-            $attempt->forceFill([
-              'consumed_at' => now(),
-            ])->save();
+        if ($attempt->isExpired(now())) {
+            throw AuthAttemptExpired::forState($state);
+        }
 
-            return $attempt->refresh();
-        });
+        if ($expectedConnectionId !== null && $attempt->connection_id !== null && (int) $attempt->connection_id !== $expectedConnectionId) {
+            throw InvalidAuthAttemptBinding::connectionMismatch(
+                expected: (int) $attempt->connection_id,
+                actual: $expectedConnectionId,
+            );
+        }
+
+        if ($expectedIdentityProviderId !== null && $attempt->identity_provider_id !== null && (int) $attempt->identity_provider_id !== $expectedIdentityProviderId) {
+            throw InvalidAuthAttemptBinding::identityProviderMismatch(
+                expected: (int) $attempt->identity_provider_id,
+                actual: $expectedIdentityProviderId,
+            );
+        }
     }
 
     private function boundedString(?string $value, int $maxLength): ?string
