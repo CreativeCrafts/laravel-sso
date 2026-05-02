@@ -100,7 +100,7 @@ it('reserves auth attempts before validation and only consumes after success', f
 });
 
 it('blocks protocol-relative callback redirects', function (): void {
-    $controller = new class {
+    $controller = new class () {
         use HandlesCallbackResponse;
 
         public function redirectFor(Request $request, ?AuthAttempt $attempt): string
@@ -125,7 +125,7 @@ it('blocks protocol-relative callback redirects', function (): void {
 it('requires azp for multi-audience OIDC ID tokens', function (): void {
     [$privateKey, $jwk] = testRsaKeyPair();
 
-    $validator = new DefaultOidcIdTokenValidator(new class($jwk) implements \CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher {
+    $validator = new DefaultOidcIdTokenValidator(new class ($jwk) implements \CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher {
         /** @param array<string, mixed> $jwk */
         public function __construct(private readonly array $jwk)
         {
@@ -167,7 +167,7 @@ it('requires azp for multi-audience OIDC ID tokens', function (): void {
 it('fails closed when JWT kid is unknown', function (): void {
     [$privateKey, $jwk] = testRsaKeyPair('key-one');
 
-    $validator = new DefaultOidcIdTokenValidator(new class($jwk) implements \CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher {
+    $validator = new DefaultOidcIdTokenValidator(new class ($jwk) implements \CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher {
         /** @param array<string, mixed> $jwk */
         public function __construct(private readonly array $jwk)
         {
