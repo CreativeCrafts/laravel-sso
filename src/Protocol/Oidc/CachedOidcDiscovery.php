@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Protocol\Oidc;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\UrlTrustPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
 use CreativeCrafts\LaravelSso\Exceptions\OidcDiscoveryFailed;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
@@ -17,12 +18,14 @@ final class CachedOidcDiscovery implements OidcDiscovery
     public function __construct(
         private readonly HttpFactory $http,
         private readonly CacheRepository $cache,
+        private readonly UrlTrustPolicy $urls,
     ) {
     }
 
     public function discover(IdentityProvider $identityProvider): OidcDiscoveryDocument
     {
         $url = $this->resolveDiscoveryUrl($identityProvider);
+        $this->urls->assertTrusted($url, 'config.discovery_url');
 
         $ttlSeconds = $this->ttlSeconds();
 
