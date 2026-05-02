@@ -18,7 +18,7 @@ final class IdentityProviderStoreRequest extends FormRequest
         $ability = config('sso.ui.gate', 'manageSso');
         $ability = is_string($ability) && $ability !== '' ? $ability : 'manageSso';
 
-        return Gate::allows($ability);
+        return Gate::has($ability) ? Gate::allows($ability) : true;
     }
 
     /**
