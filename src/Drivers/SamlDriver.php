@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Drivers;
 
 use CreativeCrafts\LaravelSso\Contracts\Core\SsoDriver;
+use CreativeCrafts\LaravelSso\Contracts\Core\UrlTrustPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionConditionsValidator;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
@@ -29,6 +30,7 @@ final readonly class SamlDriver implements SsoDriver
         private SamlSignatureValidator $signatures,
         private SamlAssertionConditionsValidator $conditions,
         private SamlClaimsNormalizer $claimsNormalizer,
+        private UrlTrustPolicy $urls,
     ) {
     }
 
@@ -52,6 +54,8 @@ final readonly class SamlDriver implements SsoDriver
         if (!is_string($ssoUrl) || $ssoUrl === '') {
             throw new RuntimeException('SAML identity provider is missing config.saml_sso_url.');
         }
+
+        $this->urls->assertTrusted($ssoUrl, 'config.saml_sso_url');
 
         if ($attempt->state === '') {
             throw new RuntimeException('SAML auth attempt is missing state.');
