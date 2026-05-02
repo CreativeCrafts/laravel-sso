@@ -12,8 +12,8 @@ use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcIdTokenValidator;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlSignatureValidator;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpFoundation\Request;
 
 it('rejects unsafe IdP URLs by default', function (): void {
     /** @var UrlTrustPolicy $policy */
