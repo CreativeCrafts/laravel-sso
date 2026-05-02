@@ -23,6 +23,8 @@ interface AuthAttemptService
         ?string $codeVerifier = null,
         bool $withNonce = true,
         array $context = [],
+        ?string $ip = null,
+        ?string $userAgent = null,
     ): AuthAttempt;
 
     /**
