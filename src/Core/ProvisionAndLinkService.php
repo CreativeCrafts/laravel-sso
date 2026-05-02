@@ -80,6 +80,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         $subject = $callback->canonicalClaims->subject;
         $email = $callback->canonicalClaims->email;
         $displayName = $callback->canonicalClaims->displayName;
+        $persistedClaims = $this->persistedClaims($callback);
 
         if ($subject === '') {
             throw MissingExternalSubject::make();
@@ -88,8 +89,8 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         $guard = $this->guards->selectGuard($tenant, $connection);
 
         /** @var Authenticatable $authenticatedUser */
-        $authenticatedUser = DB::transaction(function () use ($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $guard, $eventCallback): Authenticatable {
-            return $this->resolveAndAuthenticate($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $guard, $eventCallback);
+        $authenticatedUser = DB::transaction(function () use ($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $persistedClaims, $guard, $eventCallback): Authenticatable {
+            return $this->resolveAndAuthenticate($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $persistedClaims, $guard, $eventCallback);
         });
 
         return $authenticatedUser;
@@ -97,6 +98,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
 
     /**
      * @param array<string, mixed> $claims
+     * @param array<string, mixed> $persistedClaims
      */
     private function resolveAndAuthenticate(
         Tenant $tenant,
@@ -106,6 +108,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         ?string $email,
         ?string $displayName,
         array $claims,
+        array $persistedClaims,
         string $guard,
         CallbackEventSummary $eventCallback,
     ): Authenticatable {
@@ -125,7 +128,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
                     subject: $subject,
                     email: $email,
                     displayName: $displayName,
-                    claims: $claims,
+                    claims: $persistedClaims,
                     user: $linked,
                 );
 
@@ -163,7 +166,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
                 subject: $subject,
                 email: $email,
                 displayName: $displayName,
-                claims: $claims,
+                claims: $persistedClaims,
                 user: $user,
             );
 
@@ -224,7 +227,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             subject: $subject,
             email: $email,
             displayName: $displayName,
-            claims: $claims,
+            claims: $persistedClaims,
             user: $user,
         );
 
@@ -256,5 +259,50 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         );
 
         return $user;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function persistedClaims(DriverCallbackResult $callback): array
+    {
+        if ((bool) config('sso.claims.persist_raw', false)) {
+            return $callback->claims;
+        }
+
+        $claims = [
+            'sub' => $callback->canonicalClaims->subject,
+            'email' => $callback->canonicalClaims->email,
+            'name' => $callback->canonicalClaims->displayName,
+            'email_verified' => $callback->canonicalClaims->emailVerified,
+        ];
+
+        if ((bool) config('sso.claims.persist_groups', true)) {
+            $claims['groups'] = array_slice(
+                $callback->canonicalClaims->groups,
+                0,
+                $this->positiveIntConfig('sso.claims.max_group_items', 100),
+            );
+        }
+
+        return array_filter(
+            $claims,
+            static fn (mixed $value): bool => $value !== null,
+        );
+    }
+
+    private function positiveIntConfig(string $key, int $default): int
+    {
+        $value = config($key, $default);
+
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+
+        if (is_string($value) && ctype_digit($value) && (int)$value > 0) {
+            return (int)$value;
+        }
+
+        return $default;
     }
 }
