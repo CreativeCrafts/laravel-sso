@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\UrlTrustPolicy;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher;
 use CreativeCrafts\LaravelSso\Exceptions\OidcIdTokenValidationFailed;
 use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureInvalid;
 use CreativeCrafts\LaravelSso\Http\Controllers\Concerns\HandlesCallbackResponse;
@@ -125,7 +126,7 @@ it('blocks protocol-relative callback redirects', function (): void {
 it('requires azp for multi-audience OIDC ID tokens', function (): void {
     [$privateKey, $jwk] = testRsaKeyPair();
 
-    $validator = new DefaultOidcIdTokenValidator(new class ($jwk) implements \CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher {
+    $validator = new DefaultOidcIdTokenValidator(new class ($jwk) implements OidcJwksFetcher {
         /** @param array<string, mixed> $jwk */
         public function __construct(private readonly array $jwk)
         {
@@ -167,7 +168,7 @@ it('requires azp for multi-audience OIDC ID tokens', function (): void {
 it('fails closed when JWT kid is unknown', function (): void {
     [$privateKey, $jwk] = testRsaKeyPair('key-one');
 
-    $validator = new DefaultOidcIdTokenValidator(new class ($jwk) implements \CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher {
+    $validator = new DefaultOidcIdTokenValidator(new class ($jwk) implements OidcJwksFetcher {
         /** @param array<string, mixed> $jwk */
         public function __construct(private readonly array $jwk)
         {
