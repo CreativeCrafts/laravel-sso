@@ -87,17 +87,17 @@ it('completes the full SAML login flow and redirects to the intended location', 
 
     expect($relayState)->toBeString()->not->toBe('');
 
-$attempt = AuthAttempt::query()
-    ->where('tenant_id', $tenant->id)
-    ->where('state', $relayState)
-    ->first();
+    $attempt = AuthAttempt::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('state', $relayState)
+        ->first();
 
-$requestId = $attempt?->context['saml_request_id'] ?? null;
+    $requestId = $attempt?->context['saml_request_id'] ?? null;
 
-expect($attempt)->not->toBeNull()
-    ->and($attempt?->consumed_at)->toBeNull()
-    ->and($attempt?->redirect_to)->toBe($intended)
-    ->and($requestId)->toBeString()->not->toBe('');
+    expect($attempt)->not->toBeNull()
+        ->and($attempt?->consumed_at)->toBeNull()
+        ->and($attempt?->redirect_to)->toBe($intended)
+        ->and($requestId)->toBeString()->not->toBe('');
 
     $acsUrl = route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
@@ -174,15 +174,15 @@ it('fails the full SAML callback flow when the response signature is invalid for
 
     expect($relayState)->toBeString()->not->toBe('');
 
-$attempt = AuthAttempt::query()
-    ->where('tenant_id', $tenant->id)
-    ->where('state', $relayState)
-    ->first();
+    $attempt = AuthAttempt::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('state', $relayState)
+        ->first();
 
-$requestId = $attempt?->context['saml_request_id'] ?? null;
+    $requestId = $attempt?->context['saml_request_id'] ?? null;
 
-expect($attempt)->not->toBeNull()
-    ->and($requestId)->toBeString()->not->toBe('');
+    expect($attempt)->not->toBeNull()
+        ->and($requestId)->toBeString()->not->toBe('');
 
     $acsUrl = route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
@@ -234,7 +234,9 @@ expect($attempt)->not->toBeNull()
     $attempt = $attempt?->fresh();
 
     expect($attempt)->not->toBeNull()
-        ->and($attempt?->consumed_at)->not->toBeNull();
+        ->and($attempt?->consumed_at)->toBeNull()
+        ->and($attempt?->status)->toBe(AuthAttempt::STATUS_PENDING)
+        ->and($attempt?->failed_at)->not->toBeNull();
 });
 
 it('fails the full SAML login flow when provisioning is denied by policy', function () {
@@ -264,23 +266,23 @@ it('fails the full SAML login flow when provisioning is denied by policy', funct
     $location = (string) $redirectResponse->headers->get('Location');
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
-$relayState = $query['RelayState'] ?? null;
+    $relayState = $query['RelayState'] ?? null;
 
-expect($relayState)->toBeString()->not->toBe('');
+    expect($relayState)->toBeString()->not->toBe('');
 
-$attempt = AuthAttempt::query()
-    ->where('tenant_id', $tenant->id)
-    ->where('state', $relayState)
-    ->first();
+    $attempt = AuthAttempt::query()
+        ->where('tenant_id', $tenant->id)
+        ->where('state', $relayState)
+        ->first();
 
-$requestId = $attempt?->context['saml_request_id'] ?? null;
+    $requestId = $attempt?->context['saml_request_id'] ?? null;
 
-expect($requestId)->toBeString()->not->toBe('');
+    expect($requestId)->toBeString()->not->toBe('');
 
-$acsUrl = route('sso.saml.acs', [
-    'tenant' => $tenant->ulid,
-    'connection' => (string) $connection->id,
-], true);
+    $acsUrl = route('sso.saml.acs', [
+        'tenant' => $tenant->ulid,
+        'connection' => (string) $connection->id,
+    ], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
