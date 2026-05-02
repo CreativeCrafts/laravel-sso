@@ -24,6 +24,8 @@ use CreativeCrafts\LaravelSso\Drivers\SamlDriver;
  *     throttling: array<string, array{enabled: bool, max_attempts: int, decay_minutes: int}>,
  *     linking: array{enabled_by_default: bool, connection_setting_key: string},
  *     audit: array<string, int|string|bool>,
+ *     security: array{allow_insecure_idp_urls: bool, allow_private_idp_urls: bool},
+ *     claims: array{persist_raw: bool, persist_groups: bool, max_group_items: int},
  *     oidc: array<string, mixed>,
  *     saml: array<string, mixed>
  * }
@@ -159,6 +161,20 @@ return [
         'max_array_items' => (int) env('SSO_AUDIT_MAX_ARRAY_ITEMS', 20),
     ],
 
+    'security' => [
+        // Unsafe production bypasses for local IdP development only.
+        'allow_insecure_idp_urls' => env('SSO_ALLOW_INSECURE_IDP_URLS', false),
+        'allow_private_idp_urls' => env('SSO_ALLOW_PRIVATE_IDP_URLS', false),
+    ],
+
+    'claims' => [
+        // Persist minimized canonical claims by default. Raw protocol claims can
+        // contain PII and authorization data and require explicit opt-in.
+        'persist_raw' => env('SSO_CLAIMS_PERSIST_RAW', false),
+        'persist_groups' => env('SSO_CLAIMS_PERSIST_GROUPS', true),
+        'max_group_items' => (int) env('SSO_CLAIMS_MAX_GROUP_ITEMS', 100),
+    ],
+
     'oidc' => [
         'discovery' => [
             'enabled_default' => env('SSO_OIDC_DISCOVERY_ENABLED', true),
@@ -173,6 +189,7 @@ return [
         ],
         'id_token' => [
             'clock_skew_seconds' => env('SSO_OIDC_CLOCK_SKEW_SECONDS', 60),
+            'max_age_seconds' => env('SSO_OIDC_ID_TOKEN_MAX_AGE_SECONDS'),
             'jwks_cache_ttl_seconds' => env('SSO_OIDC_JWKS_CACHE_TTL', 3600),
             'jwks_http_timeout_seconds' => env('SSO_OIDC_JWKS_HTTP_TIMEOUT', 10),
         ],
