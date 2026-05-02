@@ -230,7 +230,9 @@ it('fails the full OIDC callback flow when the id token nonce does not match the
     $attempt = $attempt?->fresh();
 
     expect($attempt)->not->toBeNull()
-        ->and($attempt?->consumed_at)->not->toBeNull();
+        ->and($attempt?->consumed_at)->toBeNull()
+        ->and($attempt?->status)->toBe(AuthAttempt::STATUS_PENDING)
+        ->and($attempt?->failed_at)->not->toBeNull();
 });
 
 it('fails the full OIDC callback flow when the auth attempt has expired before callback consumption', function () {
