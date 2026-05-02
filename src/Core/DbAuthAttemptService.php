@@ -31,6 +31,8 @@ final class DbAuthAttemptService implements AuthAttemptService
         ?string $codeVerifier = null,
         bool $withNonce = true,
         array $context = [],
+        ?string $ip = null,
+        ?string $userAgent = null,
     ): AuthAttempt {
         $ttlSeconds = ConfigHelper::positiveInt('sso.attempts.ttl_seconds', 600);
         $stateLength = ConfigHelper::positiveInt('sso.attempts.state_length', 64);
@@ -47,8 +49,8 @@ final class DbAuthAttemptService implements AuthAttemptService
           'redirect_to' => $redirectTo,
           'expires_at' => now()->addSeconds($ttlSeconds),
           'consumed_at' => null,
-          'ip' => null,
-          'user_agent' => null,
+          'ip' => $this->boundedString($ip, 255),
+          'user_agent' => $this->boundedString($userAgent, 1024),
           'context' => $context,
         ]);
     }
@@ -103,4 +105,12 @@ final class DbAuthAttemptService implements AuthAttemptService
         });
     }
 
+    private function boundedString(?string $value, int $maxLength): ?string
+    {
+        if (!is_string($value) || $value === '') {
+            return null;
+        }
+
+        return mb_substr($value, 0, $maxLength);
+    }
 }
