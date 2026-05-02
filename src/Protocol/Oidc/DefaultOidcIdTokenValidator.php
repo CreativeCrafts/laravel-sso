@@ -19,6 +19,7 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
     }
 
     /**
+     * @return array<string, mixed>
      * @throws JsonException
      */
     public function validate(IdentityProvider $identityProvider, AuthAttempt $attempt, string $idToken): array
@@ -158,7 +159,7 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
             }
         }
 
-        return $filtered !== [] ? $filtered : $usable;
+        return $filtered;
     }
 
     /**
@@ -248,22 +249,18 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         $clientId = $this->requiredStringConfig($identityProvider, 'client_id');
 
         $aud = $claims['aud'] ?? null;
+        $audiences = $this->audiences($aud);
 
-        $audOk = false;
-
-        if (is_string($aud) && $aud === $clientId) {
-            $audOk = true;
-        } elseif (is_array($aud)) {
-            foreach ($aud as $a) {
-                if (is_string($a) && $a === $clientId) {
-                    $audOk = true;
-                    break;
-                }
-            }
+        if (!in_array($clientId, $audiences, true)) {
+            throw OidcIdTokenValidationFailed::make('aud mismatch');
         }
 
-        if (!$audOk) {
-            throw OidcIdTokenValidationFailed::make('aud mismatch');
+        if (count($audiences) > 1) {
+            $azp = $claims['azp'] ?? null;
+
+            if (!is_string($azp) || $azp === '' || $azp !== $clientId) {
+                throw OidcIdTokenValidationFailed::make('azp mismatch');
+            }
         }
 
         $exp = $claims['exp'] ?? null;
@@ -278,6 +275,23 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
             throw OidcIdTokenValidationFailed::make('token expired');
         }
 
+        $nbf = $claims['nbf'] ?? null;
+        if ((is_int($nbf) || is_float($nbf)) && ($now + $skew) < (int)$nbf) {
+            throw OidcIdTokenValidationFailed::make('token not yet valid');
+        }
+
+        $iat = $claims['iat'] ?? null;
+        if (is_int($iat) || is_float($iat)) {
+            if (($now + $skew) < (int)$iat) {
+                throw OidcIdTokenValidationFailed::make('iat is in the future');
+            }
+
+            $maxAge = $this->maxAgeSeconds();
+            if ($maxAge !== null && ($now - $skew - (int)$iat) > $maxAge) {
+                throw OidcIdTokenValidationFailed::make('token too old');
+            }
+        }
+
         $nonce = $claims['nonce'] ?? null;
         if (
           !is_string($nonce) ||
@@ -288,6 +302,30 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         ) {
             throw OidcIdTokenValidationFailed::make('nonce mismatch');
         }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function audiences(mixed $aud): array
+    {
+        if (is_string($aud) && $aud !== '') {
+            return [$aud];
+        }
+
+        if (!is_array($aud)) {
+            return [];
+        }
+
+        $out = [];
+
+        foreach ($aud as $item) {
+            if (is_string($item) && $item !== '') {
+                $out[] = $item;
+            }
+        }
+
+        return array_values(array_unique($out));
     }
 
     private function expectedIssuer(IdentityProvider $identityProvider): string
@@ -320,8 +358,40 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
 
     private function clockSkewSeconds(): int
     {
-        $value = config('sso.oidc.id_token.clock_skew_seconds', 60);
+        return $this->nonNegativeIntConfig('sso.oidc.id_token.clock_skew_seconds', 60);
+    }
 
-        return is_int($value) && $value >= 0 ? $value : 60;
+    private function maxAgeSeconds(): ?int
+    {
+        $value = config('sso.oidc.id_token.max_age_seconds');
+
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_int($value) && $value > 0) {
+            return $value;
+        }
+
+        if (is_string($value) && ctype_digit($value) && (int)$value > 0) {
+            return (int)$value;
+        }
+
+        return null;
+    }
+
+    private function nonNegativeIntConfig(string $key, int $default): int
+    {
+        $value = config($key, $default);
+
+        if (is_int($value) && $value >= 0) {
+            return $value;
+        }
+
+        if (is_string($value) && ctype_digit($value)) {
+            return (int)$value;
+        }
+
+        return $default;
     }
 }
