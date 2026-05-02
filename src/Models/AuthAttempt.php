@@ -48,6 +48,7 @@ final class AuthAttempt extends Model
     protected $casts = [
       'expires_at' => 'datetime',
       'consumed_at' => 'datetime',
+      'code_verifier' => 'encrypted',
       'context' => 'array',
     ];
 
