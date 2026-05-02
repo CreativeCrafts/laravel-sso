@@ -29,15 +29,16 @@ final class DefaultSamlSignatureValidator implements SamlSignatureValidator
     {
         $doc = $this->loadXml($xml);
 
-        $this->registerAllIdAttributes($doc);
-
         $xpath = new DOMXPath($doc);
         $xpath->registerNamespace('samlp', self::NS_SAML_PROTOCOL);
         $xpath->registerNamespace('saml', self::NS_SAML_ASSERTION);
         $xpath->registerNamespace('ds', self::NS_DS);
 
+        $this->assertStrictDocumentShape($xpath);
+        $this->registerAllIdAttributes($doc);
+
         $response = $this->firstElement($xpath, '/samlp:Response');
-        $assertion = $this->firstElement($xpath, '//saml:Assertion');
+        $assertion = $this->firstElement($xpath, '/samlp:Response/saml:Assertion');
 
         $validatedResponse = false;
         $validatedAssertion = false;
@@ -98,6 +99,71 @@ final class DefaultSamlSignatureValidator implements SamlSignatureValidator
         } catch (Throwable $e) {
             throw SamlMetadataParseFailed::invalidXml($e);
         }
+    }
+
+    private function assertStrictDocumentShape(DOMXPath $xpath): void
+    {
+        if ($this->elementCount($xpath, '/samlp:Response') !== 1) {
+            throw SamlSignatureInvalid::make();
+        }
+
+        if ($this->elementCount($xpath, '//saml:EncryptedAssertion') > 0) {
+            throw SamlSignatureInvalid::make();
+        }
+
+        if ($this->elementCount($xpath, '//saml:Assertion') !== 1) {
+            throw SamlSignatureInvalid::make();
+        }
+
+        if ($this->elementCount($xpath, '/samlp:Response/saml:Assertion') !== 1) {
+            throw SamlSignatureInvalid::make();
+        }
+
+        if ($this->elementCount($xpath, '//saml:Assertion//saml:Assertion') > 0) {
+            throw SamlSignatureInvalid::make();
+        }
+
+        if ($this->hasDuplicateIds($xpath)) {
+            throw SamlSignatureInvalid::make();
+        }
+    }
+
+    private function elementCount(DOMXPath $xpath, string $query): int
+    {
+        $nodes = $xpath->query($query);
+
+        return $nodes === false ? 0 : $nodes->length;
+    }
+
+    private function hasDuplicateIds(DOMXPath $xpath): bool
+    {
+        $nodes = $xpath->query('//*[@ID]');
+
+        if ($nodes === false) {
+            return false;
+        }
+
+        $seen = [];
+
+        foreach ($nodes as $node) {
+            if (!$node instanceof DOMElement) {
+                continue;
+            }
+
+            $id = $node->getAttribute('ID');
+
+            if ($id === '') {
+                continue;
+            }
+
+            if (array_key_exists($id, $seen)) {
+                return true;
+            }
+
+            $seen[$id] = true;
+        }
+
+        return false;
     }
 
     private function registerAllIdAttributes(DOMDocument $doc): void
