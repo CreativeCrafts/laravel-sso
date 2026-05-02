@@ -58,6 +58,9 @@ return new class extends Migration
 
             $table->timestamp('expires_at');
             $table->timestamp('consumed_at')->nullable();
+            $table->string('status', 32)->default('pending');
+            $table->timestamp('validating_at')->nullable();
+            $table->timestamp('failed_at')->nullable();
 
             $table->string('ip')->nullable();
             $table->text('user_agent')->nullable();
@@ -68,6 +71,8 @@ return new class extends Migration
             $table->unique(['tenant_id', 'state']);
             $table->index(['tenant_id', 'expires_at']);
             $table->index(['tenant_id', 'consumed_at']);
+            $table->index(['tenant_id', 'status']);
+            $table->index(['tenant_id', 'validating_at']);
         });
 
         Schema::create('sso_external_identities', function (Blueprint $table): void {
