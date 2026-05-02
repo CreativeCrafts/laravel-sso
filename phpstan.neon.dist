@@ -11,6 +11,10 @@ parameters:
         - build
         - .phpunit.cache
 
+    ignoreErrors:
+        - '~call to deprecated function~i'
+        - '~is not covariant with~i'
+
     bootstrapFiles:
         - vendor/autoload.php
 
