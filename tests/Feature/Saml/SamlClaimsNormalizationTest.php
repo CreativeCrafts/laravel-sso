@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsNormalizer;
+use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
 use CreativeCrafts\LaravelSso\Tests\TestCase;
 
 uses(TestCase::class);
@@ -11,8 +12,9 @@ it('normalizes saml response xml into canonical claims', function () {
     $xml = <<<XML
         <?xml version="1.0" encoding="UTF-8"?>
         <samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
-                       xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
-          <saml:Assertion>
+                       xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+                       ID="_response_claims_one">
+          <saml:Assertion ID="_assertion_claims_one">
             <saml:Subject>
               <saml:NameID>sub-123</saml:NameID>
             </saml:Subject>
@@ -26,7 +28,9 @@ it('normalizes saml response xml into canonical claims', function () {
         </samlp:Response>
         XML;
 
-    $claims = app(SamlClaimsNormalizer::class)->normalize($xml);
+    $claims = app(SamlClaimsNormalizer::class)->normalize(
+        samlClaimsSignedXml($xml, '_assertion_claims_one'),
+    );
 
     expect($claims->subject)
       ->toBe('sub-123')
@@ -44,8 +48,9 @@ it('honors configured attribute mapping keys', function () {
     $xml = <<<XML
         <?xml version="1.0" encoding="UTF-8"?>
         <samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
-                       xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion">
-          <saml:Assertion>
+                       xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+                       ID="_response_claims_two">
+          <saml:Assertion ID="_assertion_claims_two">
             <saml:Subject>
               <saml:NameID>sub-456</saml:NameID>
             </saml:Subject>
@@ -58,7 +63,9 @@ it('honors configured attribute mapping keys', function () {
         </samlp:Response>
         XML;
 
-    $claims = app(SamlClaimsNormalizer::class)->normalize($xml);
+    $claims = app(SamlClaimsNormalizer::class)->normalize(
+        samlClaimsSignedXml($xml, '_assertion_claims_two'),
+    );
 
     expect($claims->subject)
       ->toBe('sub-456')
@@ -66,3 +73,18 @@ it('honors configured attribute mapping keys', function () {
       ->and($claims->displayName)->toBe('Mapped User')
       ->and($claims->groups)->toBe(['ops']);
 });
+
+function samlClaimsSignedXml(string $xml, string $validatedAssertionId): SamlSignedXml
+{
+    $document = new \DOMDocument();
+    $document->preserveWhiteSpace = true;
+    $document->loadXML($xml);
+
+    return new SamlSignedXml(
+        document: $document,
+        validatedResponseSignature: false,
+        validatedAssertionSignature: true,
+        validatedResponseId: null,
+        validatedAssertionId: $validatedAssertionId,
+    );
+}
