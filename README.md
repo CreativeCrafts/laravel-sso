@@ -139,7 +139,7 @@ The package rejects protocol-relative redirects such as `//evil.example`, malfor
 
 OIDC login uses authorization code flow with PKCE S256 and nonce validation. ID token validation requires RS256 signatures, expected issuer, expected audience, expiry, nonce matching, strict key ID matching, and `azp` when a token has multiple audiences.
 
-The package also validates `nbf` and future `iat` claims when present. You may optionally bound accepted ID token age:
+The package also validates `nbf` and future `iat` claims when present. You may optionally bound accepted login freshness with `max_age_seconds`; when configured, validation requires `auth_time` and compares elapsed time since user authentication, not token issuance time:
 
 ~~~php
 'oidc' => [
