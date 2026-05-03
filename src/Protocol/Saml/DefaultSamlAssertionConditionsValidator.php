@@ -7,6 +7,7 @@ namespace CreativeCrafts\LaravelSso\Protocol\Saml;
 use Carbon\CarbonImmutable;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionConditionsValidator;
 use CreativeCrafts\LaravelSso\Exceptions\SamlAssertionConditionsInvalid;
+use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureInvalid;
 use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
 use DOMElement;
 use DOMXPath;
@@ -27,21 +28,15 @@ final class DefaultSamlAssertionConditionsValidator implements SamlAssertionCond
         bool $requireRecipient,
         bool $requireDestination,
     ): void {
-        $doc = $signed->document;
-
-        $xpath = new DOMXPath($doc);
+        $xpath = new DOMXPath($signed->document);
         $xpath->registerNamespace('samlp', self::NS_SAML_PROTOCOL);
         $xpath->registerNamespace('saml', self::NS_SAML_ASSERTION);
 
-        $response = $this->firstElement($xpath, '/samlp:Response');
+        $response = $this->response($xpath);
+        $trustedResponse = $this->trustedResponse($signed, $response);
+        $assertion = $this->trustedAssertion($signed, $xpath, $trustedResponse);
 
-        $assertion = $this->firstElement($xpath, '//saml:Assertion');
-
-        if (!$assertion instanceof DOMElement) {
-            throw SamlAssertionConditionsInvalid::expired();
-        }
-
-        if ($requireDestination && $response instanceof DOMElement) {
+        if ($requireDestination) {
             $destination = $response->getAttribute('Destination');
 
             if ($destination === '' || $destination !== $expectedDestination) {
@@ -101,6 +96,53 @@ final class DefaultSamlAssertionConditionsValidator implements SamlAssertionCond
                 throw SamlAssertionConditionsInvalid::recipientMismatch();
             }
         }
+    }
+
+    private function response(DOMXPath $xpath): DOMElement
+    {
+        $response = $this->firstElement($xpath, '/samlp:Response');
+
+        if (!$response instanceof DOMElement) {
+            throw SamlSignatureInvalid::make();
+        }
+
+        return $response;
+    }
+
+    private function trustedResponse(SamlSignedXml $signed, DOMElement $response): ?DOMElement
+    {
+        if ($signed->validatedResponseId === null) {
+            return null;
+        }
+
+        if ($response->getAttribute('ID') !== $signed->validatedResponseId) {
+            throw SamlSignatureInvalid::make();
+        }
+
+        return $response;
+    }
+
+    private function trustedAssertion(SamlSignedXml $signed, DOMXPath $xpath, ?DOMElement $trustedResponse): DOMElement
+    {
+        if ($signed->validatedAssertionId !== null) {
+            $assertion = $this->firstElement($xpath, '/samlp:Response/saml:Assertion');
+
+            if ($assertion instanceof DOMElement && $assertion->getAttribute('ID') === $signed->validatedAssertionId) {
+                return $assertion;
+            }
+
+            throw SamlSignatureInvalid::make();
+        }
+
+        if ($trustedResponse instanceof DOMElement) {
+            $assertion = $this->firstElement($xpath, 'saml:Assertion', $trustedResponse);
+
+            if ($assertion instanceof DOMElement) {
+                return $assertion;
+            }
+        }
+
+        throw SamlSignatureInvalid::make();
     }
 
     private function firstElement(DOMXPath $xpath, string $query, ?DOMElement $context = null): ?DOMElement

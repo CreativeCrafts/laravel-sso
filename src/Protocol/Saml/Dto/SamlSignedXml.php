@@ -12,6 +12,8 @@ final readonly class SamlSignedXml
         public DOMDocument $document,
         public bool $validatedResponseSignature,
         public bool $validatedAssertionSignature,
+        public ?string $validatedResponseId = null,
+        public ?string $validatedAssertionId = null,
     ) {
     }
 }

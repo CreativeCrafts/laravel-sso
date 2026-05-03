@@ -44,18 +44,18 @@
 
 ## 4. SAML Signature Provenance and Claims Binding
 
-- [ ] Extend `SamlSignedXml` with validated response/assertion IDs.
-- [ ] Record response ID when response signature validates.
-- [ ] Record assertion ID when assertion signature validates.
-- [ ] Change SAML claims normalizer to consume validated `SamlSignedXml` instead of raw XML.
-- [ ] Change SAML assertion extractor to operate on the validated DOM/signature context.
-- [ ] Ensure signed assertion extraction uses the signed assertion ID.
-- [ ] Ensure signed response extraction uses the assertion directly under the signed response.
-- [ ] Ensure condition validation operates on trusted signed context.
-- [ ] Add tests for signed assertion provenance.
-- [ ] Add tests for signed response provenance.
-- [ ] Add malicious wrapping tests proving unsigned sibling claims are not extracted.
-- [ ] Add regression tests proving raw XML is not reparsed in the driver claims path.
+- [x] Extend `SamlSignedXml` with validated response/assertion IDs.
+- [x] Record response ID when response signature validates.
+- [x] Record assertion ID when assertion signature validates.
+- [x] Change SAML claims normalizer to consume validated `SamlSignedXml` instead of raw XML.
+- [x] Change SAML assertion extractor to operate on the validated DOM/signature context.
+- [x] Ensure signed assertion extraction uses the signed assertion ID.
+- [x] Ensure signed response extraction uses the assertion directly under the signed response.
+- [x] Ensure condition validation operates on trusted signed context.
+- [x] Add tests for signed assertion provenance.
+- [x] Add tests for signed response provenance.
+- [x] Add malicious wrapping tests proving unsigned sibling claims are not extracted.
+- [x] Add regression tests proving raw XML is not reparsed in the driver claims path.
 
 ## 5. Documentation Integrity and Upgrade Docs
 

@@ -40,33 +40,35 @@ final class DefaultSamlSignatureValidator implements SamlSignatureValidator
         $response = $this->firstElement($xpath, '/samlp:Response');
         $assertion = $this->firstElement($xpath, '/samlp:Response/saml:Assertion');
 
-        $validatedResponse = false;
-        $validatedAssertion = false;
+        $validatedResponseId = null;
+        $validatedAssertionId = null;
 
         $hasAnySignature = false;
 
         if ($response instanceof DOMElement && $this->hasSignature($xpath, $response)) {
             $hasAnySignature = true;
-            $validatedResponse = $this->verifySignedElement($response, $signingCertificatesPem);
+            $validatedResponseId = $this->verifySignedElement($response, $signingCertificatesPem);
         }
 
         if ($assertion instanceof DOMElement && $this->hasSignature($xpath, $assertion)) {
             $hasAnySignature = true;
-            $validatedAssertion = $this->verifySignedElement($assertion, $signingCertificatesPem);
+            $validatedAssertionId = $this->verifySignedElement($assertion, $signingCertificatesPem);
         }
 
         if ($hasAnySignature === false) {
             throw SamlSignatureMissing::make();
         }
 
-        if ($validatedResponse === false && $validatedAssertion === false) {
+        if ($validatedResponseId === null && $validatedAssertionId === null) {
             throw SamlSignatureInvalid::make();
         }
 
         return new SamlSignedXml(
             document: $doc,
-            validatedResponseSignature: $validatedResponse,
-            validatedAssertionSignature: $validatedAssertion,
+            validatedResponseSignature: $validatedResponseId !== null,
+            validatedAssertionSignature: $validatedAssertionId !== null,
+            validatedResponseId: $validatedResponseId,
+            validatedAssertionId: $validatedAssertionId,
         );
     }
 
@@ -205,19 +207,28 @@ final class DefaultSamlSignatureValidator implements SamlSignatureValidator
     /**
      * @param array<int, string> $signingCertificatesPem
      */
-    private function verifySignedElement(DOMElement $signedElement, array $signingCertificatesPem): bool
+    private function verifySignedElement(DOMElement $signedElement, array $signingCertificatesPem): ?string
     {
         try {
             $doc = $signedElement->ownerDocument;
 
             if (!$doc instanceof DOMDocument) {
-                return false;
+                return null;
+            }
+
+            $signedElementId = $signedElement->getAttribute('ID');
+            if ($signedElementId === '') {
+                return null;
             }
 
             $signatureNode = $this->signatureNodeWithin($doc, $signedElement);
 
             if (!$signatureNode instanceof DOMElement) {
-                return false;
+                return null;
+            }
+
+            if (!$this->signatureReferencesElement($doc, $signatureNode, $signedElementId)) {
+                return null;
             }
 
             $dsig = new XMLSecurityDSig();
@@ -228,7 +239,7 @@ final class DefaultSamlSignatureValidator implements SamlSignatureValidator
 
             $refsOk = $dsig->validateReference();
             if ($refsOk !== true) {
-                return false;
+                return null;
             }
 
             foreach ($signingCertificatesPem as $certPem) {
@@ -238,20 +249,44 @@ final class DefaultSamlSignatureValidator implements SamlSignatureValidator
 
                 $key = $dsig->locateKey();
                 if (!$key instanceof XMLSecurityKey) {
-                    return false;
+                    return null;
                 }
 
                 $key->loadKey($certPem, false, true);
 
                 if ($dsig->verify($key) === 1) {
-                    return true;
+                    return $signedElementId;
                 }
             }
 
-            return false;
+            return null;
         } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function signatureReferencesElement(DOMDocument $doc, DOMElement $signatureNode, string $elementId): bool
+    {
+        $xpath = new DOMXPath($doc);
+        $xpath->registerNamespace('ds', self::NS_DS);
+
+        $refs = $xpath->query('ds:SignedInfo/ds:Reference', $signatureNode);
+
+        if ($refs === false || $refs->length < 1) {
             return false;
         }
+
+        foreach ($refs as $ref) {
+            if (!$ref instanceof DOMElement) {
+                return false;
+            }
+
+            if ($ref->getAttribute('URI') !== '#' . $elementId) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function signatureNodeWithin(DOMDocument $doc, DOMElement $scope): ?DOMElement

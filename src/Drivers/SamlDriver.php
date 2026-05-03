@@ -25,6 +25,7 @@ use RuntimeException;
 final readonly class SamlDriver implements SsoDriver
 {
     private const string NS_SAML_PROTOCOL = 'urn:oasis:names:tc:SAML:2.0:protocol';
+    private const string NS_SAML_ASSERTION = 'urn:oasis:names:tc:SAML:2.0:assertion';
 
     public function __construct(
         private SamlSignatureValidator $signatures,
@@ -190,7 +191,7 @@ final readonly class SamlDriver implements SsoDriver
             requireDestination: (bool) config('sso.saml.require_destination', true),
         );
 
-        $canonicalClaims = $this->claimsNormalizer->normalize($xml);
+        $canonicalClaims = $this->claimsNormalizer->normalize($signed);
 
         return new DriverCallbackResult(
             authenticated: true,
@@ -202,6 +203,8 @@ final readonly class SamlDriver implements SsoDriver
             context: [
                 'response_signature_valid' => $signed->validatedResponseSignature,
                 'assertion_signature_valid' => $signed->validatedAssertionSignature,
+                'signed_response_id' => $signed->validatedResponseId,
+                'signed_assertion_id' => $signed->validatedAssertionId,
             ],
             error: null,
         );
@@ -221,8 +224,35 @@ final readonly class SamlDriver implements SsoDriver
     {
         $xpath = new DOMXPath($signed->document);
         $xpath->registerNamespace('samlp', self::NS_SAML_PROTOCOL);
+        $xpath->registerNamespace('saml', self::NS_SAML_ASSERTION);
 
-        $nodes = $xpath->query('/samlp:Response');
+        if ($signed->validatedResponseId !== null) {
+            $response = $this->firstElement($xpath, '/samlp:Response');
+
+            if ($response instanceof DOMElement && $response->getAttribute('ID') === $signed->validatedResponseId) {
+                $value = $response->getAttribute('InResponseTo');
+
+                return $value !== '' ? $value : null;
+            }
+        }
+
+        if ($signed->validatedAssertionId !== null) {
+            $assertion = $this->firstElement($xpath, '/samlp:Response/saml:Assertion');
+
+            if ($assertion instanceof DOMElement && $assertion->getAttribute('ID') === $signed->validatedAssertionId) {
+                $scd = $this->firstElement($xpath, './/saml:SubjectConfirmationData', $assertion);
+                $value = $scd instanceof DOMElement ? $scd->getAttribute('InResponseTo') : '';
+
+                return $value !== '' ? $value : null;
+            }
+        }
+
+        return null;
+    }
+
+    private function firstElement(DOMXPath $xpath, string $query, ?DOMElement $context = null): ?DOMElement
+    {
+        $nodes = $xpath->query($query, $context);
 
         if ($nodes === false || $nodes->length < 1) {
             return null;
@@ -230,13 +260,7 @@ final readonly class SamlDriver implements SsoDriver
 
         $node = $nodes->item(0);
 
-        if (!$node instanceof DOMElement) {
-            return null;
-        }
-
-        $value = $node->getAttribute('InResponseTo');
-
-        return $value !== '' ? $value : null;
+        return $node instanceof DOMElement ? $node : null;
     }
 
     private function nonNegativeIntConfig(string $key, int $default): int

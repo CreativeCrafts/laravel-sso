@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Protocol\Saml;
 
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionExtractor;
-use DOMDocument;
+use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureInvalid;
+use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
 use DOMElement;
 use DOMXPath;
-use RuntimeException;
-use Throwable;
 
 final class DefaultSamlAssertionExtractor implements SamlAssertionExtractor
 {
@@ -19,20 +18,17 @@ final class DefaultSamlAssertionExtractor implements SamlAssertionExtractor
     /**
      * @return array{nameId: string, attributes: array<string, array<int, string>>}
      */
-    public function extract(string $samlResponseXml): array
+    public function extract(SamlSignedXml $signed): array
     {
-        $doc = $this->loadXml($samlResponseXml);
+        $xpath = $this->xpath($signed);
+        $assertion = $this->trustedAssertion($signed, $xpath);
 
-        $xpath = new DOMXPath($doc);
-        $xpath->registerNamespace('samlp', self::NS_SAMLP);
-        $xpath->registerNamespace('saml', self::NS_SAML);
-
-        $nameId = $this->firstText($xpath, '//saml:Assertion//saml:Subject//saml:NameID');
+        $nameId = $this->firstText($xpath, 'saml:Subject/saml:NameID', $assertion);
 
         /** @var array<string, array<int, string>> $attributes */
         $attributes = [];
 
-        $attrNodes = $xpath->query('//saml:Assertion//saml:AttributeStatement//saml:Attribute');
+        $attrNodes = $xpath->query('saml:AttributeStatement/saml:Attribute', $assertion);
 
         if ($attrNodes !== false) {
             foreach ($attrNodes as $attrNode) {
@@ -84,43 +80,80 @@ final class DefaultSamlAssertionExtractor implements SamlAssertionExtractor
         ];
     }
 
-    private function loadXml(string $xml): DOMDocument
+    private function xpath(SamlSignedXml $signed): DOMXPath
     {
-        try {
-            $previous = libxml_use_internal_errors(true);
-            libxml_clear_errors();
+        $xpath = new DOMXPath($signed->document);
+        $xpath->registerNamespace('samlp', self::NS_SAMLP);
+        $xpath->registerNamespace('saml', self::NS_SAML);
 
-            $doc = new DOMDocument();
-            $doc->preserveWhiteSpace = true;
-            $doc->formatOutput = false;
-            $doc->resolveExternals = false;
-            $doc->substituteEntities = false;
-
-            $ok = $doc->loadXML(ltrim($xml), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
-
-            $errors = libxml_get_errors();
-            libxml_clear_errors();
-            libxml_use_internal_errors($previous);
-
-            if ($ok !== true || $errors !== []) {
-                throw new RuntimeException('Invalid SAML XML.');
-            }
-
-            return $doc;
-        } catch (Throwable $e) {
-            throw new RuntimeException('Invalid SAML XML.', 0, $e);
-        }
+        return $xpath;
     }
 
-    private function firstText(DOMXPath $xpath, string $query): string
+    private function trustedAssertion(SamlSignedXml $signed, DOMXPath $xpath): DOMElement
     {
-        $nodes = $xpath->query($query);
+        if ($signed->validatedAssertionId !== null) {
+            $assertion = $this->assertionById($xpath, $signed->validatedAssertionId);
+
+            if ($assertion instanceof DOMElement) {
+                return $assertion;
+            }
+
+            throw SamlSignatureInvalid::make();
+        }
+
+        if ($signed->validatedResponseId !== null) {
+            $response = $this->responseById($xpath, $signed->validatedResponseId);
+
+            if ($response instanceof DOMElement) {
+                $assertion = $this->firstElement($xpath, 'saml:Assertion', $response);
+
+                if ($assertion instanceof DOMElement) {
+                    return $assertion;
+                }
+            }
+        }
+
+        throw SamlSignatureInvalid::make();
+    }
+
+    private function responseById(DOMXPath $xpath, string $id): ?DOMElement
+    {
+        $response = $this->firstElement($xpath, '/samlp:Response');
+
+        if (!$response instanceof DOMElement) {
+            return null;
+        }
+
+        return $response->getAttribute('ID') === $id ? $response : null;
+    }
+
+    private function assertionById(DOMXPath $xpath, string $id): ?DOMElement
+    {
+        $assertion = $this->firstElement($xpath, '/samlp:Response/saml:Assertion');
+
+        if (!$assertion instanceof DOMElement) {
+            return null;
+        }
+
+        return $assertion->getAttribute('ID') === $id ? $assertion : null;
+    }
+
+    private function firstElement(DOMXPath $xpath, string $query, ?DOMElement $context = null): ?DOMElement
+    {
+        $nodes = $xpath->query($query, $context);
 
         if ($nodes === false || $nodes->length < 1) {
-            return '';
+            return null;
         }
 
         $node = $nodes->item(0);
+
+        return $node instanceof DOMElement ? $node : null;
+    }
+
+    private function firstText(DOMXPath $xpath, string $query, DOMElement $context): string
+    {
+        $node = $this->firstElement($xpath, $query, $context);
 
         if (!$node instanceof DOMElement) {
             return '';
