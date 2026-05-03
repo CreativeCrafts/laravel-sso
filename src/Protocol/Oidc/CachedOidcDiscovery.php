@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Protocol\Oidc;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\IdpOutboundUrlPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Core\UrlTrustPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcDiscovery;
 use CreativeCrafts\LaravelSso\Exceptions\OidcDiscoveryFailed;
@@ -19,6 +20,7 @@ final class CachedOidcDiscovery implements OidcDiscovery
         private readonly HttpFactory $http,
         private readonly CacheRepository $cache,
         private readonly UrlTrustPolicy $urls,
+        private readonly IdpOutboundUrlPolicy $outboundUrls,
     ) {
     }
 
@@ -33,8 +35,11 @@ final class CachedOidcDiscovery implements OidcDiscovery
             try {
                 $timeout = $this->timeoutSeconds();
 
+                $this->outboundUrls->assertTrustedForRequest($url, 'config.discovery_url');
+
                 $response = $this->http
                   ->timeout($timeout)
+                  ->withOptions(['allow_redirects' => false])
                   ->acceptJson()
                   ->get($url);
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Drivers;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\IdpOutboundUrlPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Core\SsoDriver;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
@@ -32,6 +33,7 @@ final readonly class OidcDriver implements SsoDriver
         private OidcIdTokenValidator $idTokens,
         private OidcClaimsNormalizer $claimsNormalizer,
         private HttpFactory $http,
+        private IdpOutboundUrlPolicy $outboundUrls,
     ) {
     }
 
@@ -164,8 +166,11 @@ final readonly class OidcDriver implements SsoDriver
                 $payload['client_secret'] = $clientSecret;
             }
 
+            $this->outboundUrls->assertTrustedForRequest($ep->tokenEndpoint, 'token_endpoint');
+
             $response = $this->http
                 ->timeout($timeout)
+                ->withOptions(['allow_redirects' => false])
                 ->asForm()
                 ->acceptJson()
                 ->post($ep->tokenEndpoint, $payload);
@@ -284,8 +289,11 @@ final readonly class OidcDriver implements SsoDriver
     private function fetchUserinfo(string $url, string $accessToken, int $timeout): array
     {
         try {
+            $this->outboundUrls->assertTrustedForRequest($url, 'userinfo_endpoint');
+
             $response = $this->http
                 ->timeout($timeout)
+                ->withOptions(['allow_redirects' => false])
                 ->acceptJson()
                 ->withToken($accessToken)
                 ->get($url);

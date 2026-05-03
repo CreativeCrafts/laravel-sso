@@ -27,20 +27,20 @@
 
 ## 3. DNS-Aware IdP URL Safety
 
-- [ ] Add `HostnameResolver` contract.
-- [ ] Add default DNS resolver implementation.
-- [ ] Add outbound IdP URL policy that validates URL syntax and resolved IP addresses.
-- [ ] Reject hostnames that resolve to loopback addresses.
-- [ ] Reject hostnames that resolve to private RFC1918 addresses.
-- [ ] Reject hostnames that resolve to link-local, multicast, reserved, or metadata-service addresses.
-- [ ] Reject mixed public/private DNS answer sets.
-- [ ] Reject unresolved hostnames by default.
-- [ ] Disable redirects for IdP HTTP calls or revalidate every redirect target.
-- [ ] Apply outbound policy to OIDC discovery calls.
-- [ ] Apply outbound policy to OIDC JWKS fetches.
-- [ ] Apply outbound policy to OIDC token exchange calls.
-- [ ] Apply outbound policy to OIDC userinfo calls.
-- [ ] Add tests using a fake resolver for public, private, loopback, IPv6, mixed-answer, and unresolved hostnames.
+- [x] Add `HostnameResolver` contract.
+- [x] Add default DNS resolver implementation.
+- [x] Add outbound IdP URL policy that validates URL syntax and resolved IP addresses.
+- [x] Reject hostnames that resolve to loopback addresses.
+- [x] Reject hostnames that resolve to private RFC1918 addresses.
+- [x] Reject hostnames that resolve to link-local, multicast, reserved, or metadata-service addresses.
+- [x] Reject mixed public/private DNS answer sets.
+- [x] Reject unresolved hostnames by default.
+- [x] Disable redirects for IdP HTTP calls or revalidate every redirect target.
+- [x] Apply outbound policy to OIDC discovery calls.
+- [x] Apply outbound policy to OIDC JWKS fetches.
+- [x] Apply outbound policy to OIDC token exchange calls.
+- [x] Apply outbound policy to OIDC userinfo calls.
+- [x] Add tests using a fake resolver for public, private, loopback, IPv6, mixed-answer, and unresolved hostnames.
 
 ## 4. SAML Signature Provenance and Claims Binding
 

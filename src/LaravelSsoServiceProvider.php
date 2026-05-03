@@ -16,6 +16,8 @@ use CreativeCrafts\LaravelSso\Contracts\Core\BeginLogin;
 use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
 use CreativeCrafts\LaravelSso\Contracts\Core\GuardSelector;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
+use CreativeCrafts\LaravelSso\Contracts\Core\HostnameResolver;
+use CreativeCrafts\LaravelSso\Contracts\Core\IdpOutboundUrlPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Core\ProvisionAndLink;
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
 use CreativeCrafts\LaravelSso\Contracts\Core\UrlTrustPolicy;
@@ -46,6 +48,8 @@ use CreativeCrafts\LaravelSso\Core\ConfigDriverRegistry;
 use CreativeCrafts\LaravelSso\Core\ConfigHelper;
 use CreativeCrafts\LaravelSso\Core\DbAuthAttemptService;
 use CreativeCrafts\LaravelSso\Core\DefaultGuardSelector;
+use CreativeCrafts\LaravelSso\Core\DefaultHostnameResolver;
+use CreativeCrafts\LaravelSso\Core\DefaultIdpOutboundUrlPolicy;
 use CreativeCrafts\LaravelSso\Core\DefaultUrlTrustPolicy;
 use CreativeCrafts\LaravelSso\Core\DefaultUserLocator;
 use CreativeCrafts\LaravelSso\Core\DefaultUserProvisioner;
@@ -118,6 +122,8 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(ProvisioningPolicy::class, DefaultProvisioningPolicy::class);
         $this->app->singleton(IdentityLinkPolicy::class, DefaultIdentityLinkPolicy::class);
         $this->app->singleton(UrlTrustPolicy::class, DefaultUrlTrustPolicy::class);
+        $this->app->singleton(HostnameResolver::class, DefaultHostnameResolver::class);
+        $this->app->singleton(IdpOutboundUrlPolicy::class, DefaultIdpOutboundUrlPolicy::class);
 
         $this->app->singleton(SamlMetadataParser::class, DefaultSamlMetadataParser::class);
         $this->app->singleton(SpMetadataGenerator::class);
@@ -276,5 +282,4 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             $ip,
         ]);
     }
-
 }

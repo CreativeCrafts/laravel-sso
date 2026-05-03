@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Tests;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\HostnameResolver;
+use CreativeCrafts\LaravelSso\Contracts\Core\IdpOutboundUrlPolicy;
 use CreativeCrafts\LaravelSso\LaravelSsoServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Foundation\Application;
@@ -14,6 +16,14 @@ abstract class TestCase extends Orchestra
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->app->bind(HostnameResolver::class, static fn (): HostnameResolver => new class () implements HostnameResolver {
+            public function resolve(string $hostname): array
+            {
+                return ['93.184.216.34'];
+            }
+        });
+        $this->app->forgetInstance(IdpOutboundUrlPolicy::class);
 
         Factory::guessFactoryNamesUsing(
             fn (string $modelName): string => 'CreativeCrafts\\LaravelSso\\Database\\Factories\\' . class_basename($modelName) . 'Factory',

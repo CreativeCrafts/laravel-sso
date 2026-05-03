@@ -63,6 +63,24 @@ If a request dies after reserving an attempt but before consuming or releasing i
 
 Fresh `validating` attempts are rejected as already in progress. Stale `validating` attempts are recovered under row lock only when they are not consumed and not expired.
 
+## Outbound IdP URL safety
+
+Outbound OIDC HTTP calls now validate both the configured URL string and the resolved DNS answers immediately before each request.
+
+This applies to OIDC discovery, JWKS fetches, token exchange, and userinfo fetches.
+
+By default, hostnames must resolve to public routable IP addresses. Unresolved hosts and hosts with any local, private, link-local, multicast, or reserved DNS answer are rejected. Redirect following is disabled for these outbound IdP HTTP calls, so configure the final HTTPS endpoint directly.
+
+Private-address validation can be relaxed only through the explicit local-development setting:
+
+```php
+'security' => [
+    'allow_private_idp_urls' => env('SSO_ALLOW_PRIVATE_IDP_URLS', false),
+],
+```
+
+Keep this setting disabled in production unless equivalent network controls are enforced outside the package.
+
 ## Compatibility notes
 
 The package supports the runtime constraints declared in `composer.json`:
@@ -77,6 +95,7 @@ CI validates PHP 8.3, 8.4, and 8.5 across Laravel 12 and Laravel 13.
 Before upgrading production applications, review these behavior changes:
 
 - OIDC/SAML IdP URLs are trusted only when they are production-safe by default.
+- Outbound IdP hostnames must resolve to public routable addresses by default.
 - Local insecure/private IdP URL overrides must be enabled explicitly and should not be used in production.
 - External identity claims are minimized by default; raw claim persistence requires explicit opt-in.
 - SAML responses are rejected when they use unsupported ambiguous shapes such as multiple assertions, nested assertions, duplicate IDs, or encrypted assertions.
