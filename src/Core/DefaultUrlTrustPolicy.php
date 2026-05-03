@@ -106,12 +106,7 @@ final readonly class DefaultUrlTrustPolicy implements UrlTrustPolicy
         if (str_ends_with($host, '.localhost')) {
             return true;
         }
-
-        if ($host === 'metadata.google.internal') {
-            return true;
-        }
-
-        return false;
+        return $host === 'metadata.google.internal';
     }
 
     private function isIpAddress(string $host): bool

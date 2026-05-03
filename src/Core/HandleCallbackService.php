@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Core;
 
+use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuditContextSanitizer;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
@@ -120,7 +121,7 @@ final readonly class HandleCallbackService implements HandleCallback
 
             return $result;
         } catch (Throwable $e) {
-            if ($attempt !== null) {
+            if ($attempt instanceof AuthAttempt) {
                 try {
                     $attempt = $this->attempts->markValidationFailed($attempt);
                 } catch (Throwable $markFailedException) {
