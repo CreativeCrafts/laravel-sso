@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso;
 
+use CreativeCrafts\LaravelSso\Admin\DefaultIdentityProviderConfigValidator;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoDoctorCommand;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoInstallCommand;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeConnectionCommand;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeIdentityProviderCommand;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoMakeTenantCommand;
 use CreativeCrafts\LaravelSso\Console\Commands\SsoPruneCommand;
+use CreativeCrafts\LaravelSso\Contracts\Admin\IdentityProviderConfigValidator;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuditContextSanitizer as AuditContextSanitizerContract;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\BeginLogin;
@@ -124,6 +126,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(UrlTrustPolicy::class, DefaultUrlTrustPolicy::class);
         $this->app->singleton(HostnameResolver::class, DefaultHostnameResolver::class);
         $this->app->singleton(IdpOutboundUrlPolicy::class, DefaultIdpOutboundUrlPolicy::class);
+        $this->app->singleton(IdentityProviderConfigValidator::class, DefaultIdentityProviderConfigValidator::class);
 
         $this->app->singleton(SamlMetadataParser::class, DefaultSamlMetadataParser::class);
         $this->app->singleton(SpMetadataGenerator::class);
