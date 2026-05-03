@@ -69,7 +69,7 @@ Outbound OIDC HTTP calls now validate both the configured URL string and the res
 
 This applies to OIDC discovery, JWKS fetches, token exchange, and userinfo fetches.
 
-By default, hostnames must resolve to public routable IP addresses. Unresolved hosts and hosts with any local, private, link-local, multicast, or reserved DNS answer are rejected. Redirect following is disabled for these outbound IdP HTTP calls, so configure the final HTTPS endpoint directly.
+By default, hostnames must resolve to globally reachable public IP addresses. Unresolved hosts and hosts with any local, private, link-local, multicast, reserved, documentation, benchmarking, or shared-address DNS answer are rejected. Redirect following is disabled for these outbound IdP HTTP calls, so configure the final HTTPS endpoint directly.
 
 Private-address validation can be relaxed only through the explicit local-development setting:
 
@@ -81,6 +81,37 @@ Private-address validation can be relaxed only through the explicit local-develo
 
 Keep this setting disabled in production unless equivalent network controls are enforced outside the package.
 
+## SAML strictness
+
+SAML responses are intentionally strict after this hardening milestone.
+
+The package rejects unsupported or ambiguous SAML shapes before accepting signatures, including:
+
+- encrypted assertions
+- multiple assertions
+- nested assertions
+- duplicate `ID` attributes
+- missing signatures
+- signatures whose `Reference` does not target the signed response or assertion being validated
+
+Encrypted assertions are not decrypted by this package. If your IdP is configured to encrypt assertions, disable assertion encryption for this SP integration or introduce a separate design proposal for decryption support.
+
+Claims extraction, condition validation, and callback correlation use the validated signed context. For assertion-signed responses, response-level `Destination` validation is still read from the single response envelope while claims and recipient/correlation checks are bound to the signed assertion.
+
+## Claims persistence defaults
+
+External identities persist minimized canonical claims by default. Raw OIDC or SAML claim bags can contain personal data and authorization data, so raw persistence remains opt-in:
+
+```php
+'claims' => [
+    'persist_raw' => env('SSO_CLAIMS_PERSIST_RAW', false),
+    'persist_groups' => env('SSO_CLAIMS_PERSIST_GROUPS', true),
+    'max_group_items' => env('SSO_CLAIMS_MAX_GROUP_ITEMS', 100),
+],
+```
+
+Keep `persist_raw` disabled unless your application has a defined retention policy and a reviewed need for raw provider claims.
+
 ## Compatibility notes
 
 The package supports the runtime constraints declared in `composer.json`:
@@ -88,14 +119,14 @@ The package supports the runtime constraints declared in `composer.json`:
 - PHP `^8.3`, including PHP 8.3, 8.4, and 8.5
 - Laravel / Illuminate `^12.0|^13.0`
 
-CI validates PHP 8.3, 8.4, and 8.5 across Laravel 12 and Laravel 13.
+CI validates PHP 8.3, 8.4, and 8.5 across Laravel 12 and Laravel 13. CI is the source of truth for supported dependency-set coverage.
 
 ## Security-default changes to review
 
 Before upgrading production applications, review these behavior changes:
 
 - OIDC/SAML IdP URLs are trusted only when they are production-safe by default.
-- Outbound IdP hostnames must resolve to public routable addresses by default.
+- Outbound IdP hostnames must resolve to globally reachable public addresses by default.
 - Local insecure/private IdP URL overrides must be enabled explicitly and should not be used in production.
 - External identity claims are minimized by default; raw claim persistence requires explicit opt-in.
 - SAML responses are rejected when they use unsupported ambiguous shapes such as multiple assertions, nested assertions, duplicate IDs, or encrypted assertions.

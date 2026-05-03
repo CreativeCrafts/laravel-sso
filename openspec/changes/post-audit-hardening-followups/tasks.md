@@ -59,15 +59,15 @@
 
 ## 5. Documentation Integrity and Upgrade Docs
 
-- [ ] Add `docs/upgrade-guide.md`.
-- [ ] Add or verify all README-linked docs exist.
-- [ ] Document lifecycle-field upgrade migration.
-- [ ] Document encrypted PKCE verifier rollout and auth-attempt pruning.
-- [ ] Document IdP URL trust policy and local-development overrides.
-- [ ] Document SAML strictness and unsupported encrypted assertions.
-- [ ] Document claims persistence defaults and raw-claims opt-in.
-- [ ] Document supported PHP/Laravel CI matrix.
-- [ ] Add docs-link integrity test or CI script for local README links.
+- [x] Add `docs/upgrade-guide.md`.
+- [x] Add or verify all README-linked docs exist.
+- [x] Document lifecycle-field upgrade migration.
+- [x] Document encrypted PKCE verifier rollout and auth-attempt pruning.
+- [x] Document IdP URL trust policy and local-development overrides.
+- [x] Document SAML strictness and unsupported encrypted assertions.
+- [x] Document claims persistence defaults and raw-claims opt-in.
+- [x] Document supported PHP/Laravel CI matrix.
+- [x] Add docs-link integrity test or CI script for local README links.
 
 ## 6. Admin Validation Design Cleanup
 
