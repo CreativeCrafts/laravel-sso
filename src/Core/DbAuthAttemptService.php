@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Core;
 
+use Carbon\CarbonInterface;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptAlreadyConsumed;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptExpired;
@@ -73,13 +74,15 @@ final class DbAuthAttemptService implements AuthAttemptService
 
             $this->assertAttemptUsable($attempt, $state, $expectedConnectionId, $expectedIdentityProviderId);
 
-            if ($attempt->isValidating()) {
+            $now = now();
+
+            if ($attempt->isValidating() && $this->hasFreshValidationLock($attempt, $now)) {
                 throw AuthAttemptValidationInProgress::forState($state);
             }
 
             $attempt->forceFill([
               'status' => AuthAttempt::STATUS_VALIDATING,
-              'validating_at' => now(),
+              'validating_at' => $now,
             ])->save();
 
             return $attempt->refresh();
@@ -208,6 +211,23 @@ final class DbAuthAttemptService implements AuthAttemptService
                 actual: $expectedIdentityProviderId,
             );
         }
+    }
+
+    private function hasFreshValidationLock(AuthAttempt $attempt, CarbonInterface $now): bool
+    {
+        if ($attempt->validating_at === null) {
+            return false;
+        }
+
+        return $attempt->validating_at
+            ->copy()
+            ->addSeconds($this->validationLockTtlSeconds())
+            ->greaterThan($now);
+    }
+
+    private function validationLockTtlSeconds(): int
+    {
+        return ConfigHelper::positiveInt('sso.attempts.validation_lock_ttl_seconds', 120);
     }
 
     private function boundedString(?string $value, int $maxLength): ?string

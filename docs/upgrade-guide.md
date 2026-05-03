@@ -53,6 +53,16 @@ Callback handling now reserves attempts before protocol validation and consumes 
 
 Failed protocol validation records `failed_at` and returns the attempt to retryable pending state. Already consumed attempts remain replay-protected and cannot be consumed again.
 
+If a request dies after reserving an attempt but before consuming or releasing it, the attempt can be recovered after the validation lock TTL:
+
+```php
+'attempts' => [
+    'validation_lock_ttl_seconds' => env('SSO_ATTEMPT_VALIDATION_LOCK_TTL_SECONDS', 120),
+],
+```
+
+Fresh `validating` attempts are rejected as already in progress. Stale `validating` attempts are recovered under row lock only when they are not consumed and not expired.
+
 ## Compatibility notes
 
 The package supports the runtime constraints declared in `composer.json`:
