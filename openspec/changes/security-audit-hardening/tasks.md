@@ -93,7 +93,7 @@
 - [x] Decide whether Laravel 13 support is official or provisional.
 - [x] If Laravel 13 is official, add CI coverage for it.
 - [x] Remove placeholder PHPStan exclusions.
-- [ ] Consider enabling `reportUnmatchedIgnoredErrors` once baseline noise is resolved.
+- [x] Consider enabling `reportUnmatchedIgnoredErrors` once baseline noise is resolved.
 - [x] Update operator documentation for unsafe URL overrides, claim persistence, PKCE pruning, and SAML strictness.
 
 ## 11. Release Readiness
