@@ -32,11 +32,12 @@ final class DefaultSamlAssertionConditionsValidator implements SamlAssertionCond
         $xpath->registerNamespace('samlp', self::NS_SAML_PROTOCOL);
         $xpath->registerNamespace('saml', self::NS_SAML_ASSERTION);
 
-        $response = $this->trustedResponse($signed, $xpath);
-        $assertion = $this->trustedAssertion($signed, $xpath, $response);
+        $response = $this->response($xpath);
+        $trustedResponse = $this->trustedResponse($signed, $response);
+        $assertion = $this->trustedAssertion($signed, $xpath, $trustedResponse);
 
         if ($requireDestination) {
-            $destination = $response instanceof DOMElement ? $response->getAttribute('Destination') : '';
+            $destination = $response->getAttribute('Destination');
 
             if ($destination === '' || $destination !== $expectedDestination) {
                 throw SamlAssertionConditionsInvalid::destinationMismatch();
@@ -97,7 +98,7 @@ final class DefaultSamlAssertionConditionsValidator implements SamlAssertionCond
         }
     }
 
-    private function trustedResponse(SamlSignedXml $signed, DOMXPath $xpath): ?DOMElement
+    private function response(DOMXPath $xpath): DOMElement
     {
         $response = $this->firstElement($xpath, '/samlp:Response');
 
@@ -105,6 +106,11 @@ final class DefaultSamlAssertionConditionsValidator implements SamlAssertionCond
             throw SamlSignatureInvalid::make();
         }
 
+        return $response;
+    }
+
+    private function trustedResponse(SamlSignedXml $signed, DOMElement $response): ?DOMElement
+    {
         if ($signed->validatedResponseId === null) {
             return null;
         }
