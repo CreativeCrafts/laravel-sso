@@ -19,7 +19,7 @@ use CreativeCrafts\LaravelSso\Drivers\SamlDriver;
  *     },
  *     guards: array{default?: string|null, allowed: array<int, string>},
  *     drivers: array<string, class-string>,
- *     attempts: array{ttl_seconds: int, state_length: int, nonce_length: int, code_verifier_length: int},
+ *     attempts: array{ttl_seconds: int, state_length: int, nonce_length: int, code_verifier_length: int, validation_lock_ttl_seconds: int},
  *     provisioning: array{email_column: string, name_column: string, enabled_by_default: bool, connection_setting_key: string},
  *     throttling: array<string, array{enabled: bool, max_attempts: int, decay_minutes: int}>,
  *     linking: array{enabled_by_default: bool, connection_setting_key: string},
@@ -95,6 +95,7 @@ return [
         'state_length' => (int) env('SSO_STATE_LENGTH', 64),
         'nonce_length' => (int) env('SSO_NONCE_LENGTH', 64),
         'code_verifier_length' => (int) env('SSO_CODE_VERIFIER_LENGTH', 96),
+        'validation_lock_ttl_seconds' => (int) env('SSO_ATTEMPT_VALIDATION_LOCK_TTL_SECONDS', 120),
     ],
 
     'provisioning' => [
