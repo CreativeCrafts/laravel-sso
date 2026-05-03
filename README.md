@@ -10,10 +10,10 @@ Generic OIDC and SAML 2.0 SSO for Laravel, with multi-tenant support, user provi
 
 This package currently supports the runtime constraints declared in `composer.json`:
 
-- PHP `^8.3`
+- PHP `^8.3`, including PHP 8.3, 8.4, and 8.5
 - Laravel / Illuminate `^12.0|^13.0`
 
-CI runs the package checks on PHP 8.3 and PHP 8.4. See `composer.json` for the authoritative runtime constraints.
+CI runs checks and coverage across PHP 8.3, 8.4, and 8.5 with Laravel 12 and Laravel 13. See `composer.json` for the authoritative runtime constraints.
 
 ## Documentation
 
