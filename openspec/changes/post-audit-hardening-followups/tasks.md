@@ -16,14 +16,14 @@
 
 ## 2. Auth-Attempt Validation Lock Recovery
 
-- [ ] Add `sso.attempts.validation_lock_ttl_seconds` config.
-- [ ] Reject fresh `validating` attempts as already in progress.
-- [ ] Recover stale `validating` attempts under row lock.
-- [ ] Preserve consumed-attempt replay rejection.
-- [ ] Preserve expired-attempt rejection.
-- [ ] Add tests for fresh validating lock rejection.
-- [ ] Add tests for stale validating lock recovery.
-- [ ] Add tests for consumed and expired stale-lock edge cases.
+- [x] Add `sso.attempts.validation_lock_ttl_seconds` config.
+- [x] Reject fresh `validating` attempts as already in progress.
+- [x] Recover stale `validating` attempts under row lock.
+- [x] Preserve consumed-attempt replay rejection.
+- [x] Preserve expired-attempt rejection.
+- [x] Add tests for fresh validating lock rejection.
+- [x] Add tests for stale validating lock recovery.
+- [x] Add tests for consumed and expired stale-lock edge cases.
 
 ## 3. DNS-Aware IdP URL Safety
 
