@@ -21,12 +21,20 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $redirect_to
  * @property CarbonInterface $expires_at
  * @property CarbonInterface|null $consumed_at
+ * @property string $status
+ * @property CarbonInterface|null $validating_at
+ * @property CarbonInterface|null $failed_at
  * @property string|null $ip
  * @property string|null $user_agent
  * @property array<string, mixed> $context
  */
 final class AuthAttempt extends Model
 {
+    public const string STATUS_PENDING = 'pending';
+    public const string STATUS_VALIDATING = 'validating';
+    public const string STATUS_CONSUMED = 'consumed';
+    public const string STATUS_FAILED = 'failed';
+
     protected $table = 'sso_auth_attempts';
 
     protected $fillable = [
@@ -40,6 +48,9 @@ final class AuthAttempt extends Model
       'redirect_to',
       'expires_at',
       'consumed_at',
+      'status',
+      'validating_at',
+      'failed_at',
       'ip',
       'user_agent',
       'context',
@@ -48,6 +59,9 @@ final class AuthAttempt extends Model
     protected $casts = [
       'expires_at' => 'datetime',
       'consumed_at' => 'datetime',
+      'validating_at' => 'datetime',
+      'failed_at' => 'datetime',
+      'code_verifier' => 'encrypted',
       'context' => 'array',
     ];
 
@@ -90,6 +104,11 @@ final class AuthAttempt extends Model
 
     public function isConsumed(): bool
     {
-        return $this->consumed_at !== null;
+        return $this->consumed_at !== null || $this->status === self::STATUS_CONSUMED;
+    }
+
+    public function isValidating(): bool
+    {
+        return $this->status === self::STATUS_VALIDATING;
     }
 }

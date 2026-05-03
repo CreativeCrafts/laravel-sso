@@ -8,12 +8,12 @@ Generic OIDC and SAML 2.0 SSO for Laravel, with multi-tenant support, user provi
 
 ## Compatibility
 
-This package currently supports:
+This package currently supports the runtime constraints declared in `composer.json`:
 
-- PHP `^8.3`
-- Laravel `^12.0`
+- PHP `^8.3`, including PHP 8.3, 8.4, and 8.5
+- Laravel / Illuminate `^12.0|^13.0`
 
-See `composer.json` for the authoritative runtime constraints.
+CI runs checks and coverage across PHP 8.3, 8.4, and 8.5 with Laravel 12 and Laravel 13. See `composer.json` for the authoritative runtime constraints.
 
 ## Documentation
 
@@ -112,6 +112,65 @@ $connection->settings = [
 
 This makes it possible to allow automatic provisioning or linking for one identity provider while denying it for another within the same tenant.
 
+## IdP URL security
+
+OIDC and SAML identity-provider URLs are trusted only when they are production-safe by default.
+
+The package rejects IdP URLs that are malformed, use embedded credentials, target localhost/private/reserved IP destinations, or use plain HTTP. This applies to OIDC discovery URLs, OIDC authorization/token/JWKS/userinfo endpoints, SAML SSO URLs, and SAML metadata URLs.
+
+For local IdP development only, the defaults can be relaxed explicitly:
+
+~~~php
+'security' => [
+    'allow_insecure_idp_urls' => false,
+    'allow_private_idp_urls' => false,
+],
+~~~
+
+Do not enable these overrides in production unless equivalent upstream network controls are in place.
+
+## Callback redirect safety
+
+Post-login `redirect_to` values are constrained to safe local paths or same-origin absolute URLs.
+
+The package rejects protocol-relative redirects such as `//evil.example`, malformed URLs, backslash-containing redirects, control characters, and external origins. Unsafe targets fall back to `/`.
+
+## OIDC hardening
+
+OIDC login uses authorization code flow with PKCE S256 and nonce validation. ID token validation requires RS256 signatures, expected issuer, expected audience, expiry, nonce matching, strict key ID matching, and `azp` when a token has multiple audiences.
+
+The package also validates `nbf` and future `iat` claims when present. You may optionally bound accepted login freshness with `max_age_seconds`; when configured, validation requires `auth_time` and compares elapsed time since user authentication, not token issuance time:
+
+~~~php
+'oidc' => [
+    'id_token' => [
+        'max_age_seconds' => env('SSO_OIDC_ID_TOKEN_MAX_AGE_SECONDS'),
+    ],
+],
+~~~
+
+The transient PKCE `code_verifier` is encrypted at rest in `sso_auth_attempts`.
+
+## SAML hardening
+
+SAML responses are parsed with external entity loading disabled and must pass XML signature validation against configured signing certificates.
+
+The package rejects ambiguous or unsupported SAML shapes, including multiple assertions, nested assertions, encrypted assertions, duplicate `ID` attributes, and missing signatures. Destination, audience, recipient, and `InResponseTo` correlation checks remain required by default.
+
+## Claims persistence
+
+External identities persist minimized canonical claims by default rather than raw protocol claims.
+
+~~~php
+'claims' => [
+    'persist_raw' => false,
+    'persist_groups' => true,
+    'max_group_items' => 100,
+],
+~~~
+
+Set `persist_raw` to `true` only when your application explicitly needs raw OIDC/SAML claim snapshots and you have appropriate data-retention controls.
+
 ## Audit logging
 
 Audit logging is redacted by default.
@@ -137,6 +196,12 @@ Extended audit context is available only as an explicit opt-in for debugging:
 ~~~
 
 When enabled, the package stores additional redacted summaries for canonical claims and driver context. Sensitive values such as access tokens, ID tokens, refresh tokens, private keys, SAML responses, and raw claim bags remain redacted even in extended mode.
+
+## Auth attempt lifecycle
+
+Callback state handling is replay-safe and uses a two-phase lifecycle.
+
+An auth attempt is reserved for validation before protocol-specific callback validation starts. It is marked consumed only after OIDC or SAML validation succeeds. Failed protocol validation releases the attempt back to pending and records `failed_at`, allowing the caller to retry with a valid callback while still rejecting already consumed attempts.
 
 ## Request throttling
 
@@ -176,6 +241,8 @@ Disable throttling only if you have strong compensating controls upstream.
 
 Run `php artisan sso:prune --attempts-days=7 --audit-days=30` on a schedule (for example, daily) to remove stale `sso_auth_attempts` and `sso_audit_logs` records and keep tables compact.
 
+Before deploying changes that encrypt transient attempt data, prune stale auth attempts so no expired plaintext attempts remain active during the upgrade window.
+
 ## Optional Admin UI
 
 The admin UI is optional and disabled by default.
@@ -189,7 +256,7 @@ Enable it in your config:
 ],
 ~~~
 
-The UI routes are protected by your configured middleware and gate ability.
+The UI routes are protected by your configured middleware and gate ability. Admin FormRequests also honor the configured gate when it is defined, as defense in depth.
 
 ## Publish UI assets
 

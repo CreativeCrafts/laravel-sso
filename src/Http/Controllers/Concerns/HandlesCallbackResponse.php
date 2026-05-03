@@ -81,7 +81,13 @@ trait HandlesCallbackResponse
             return '/';
         }
 
-        if (str_starts_with($redirect, '/')) {
+        $redirect = trim($redirect);
+
+        if ($redirect === '' || $this->containsUnsafeRedirectCharacters($redirect)) {
+            return '/';
+        }
+
+        if ($this->isSafeLocalRedirectPath($redirect)) {
             return $redirect;
         }
 
@@ -92,11 +98,29 @@ trait HandlesCallbackResponse
         $targetParts = parse_url($redirect);
         $currentParts = parse_url($request->getSchemeAndHttpHost());
 
-        if ($targetParts === false || $currentParts === false) {
+        if (!is_array($targetParts) || !is_array($currentParts)) {
             return '/';
         }
 
         return $this->isSameOrigin($targetParts, $currentParts) ? $redirect : '/';
+    }
+
+    private function containsUnsafeRedirectCharacters(string $redirect): bool
+    {
+        if (preg_match('/[\x00-\x1F\x7F]/', $redirect) === 1) {
+            return true;
+        }
+
+        return str_contains($redirect, '\\');
+    }
+
+    private function isSafeLocalRedirectPath(string $redirect): bool
+    {
+        if (!str_starts_with($redirect, '/')) {
+            return false;
+        }
+
+        return !str_starts_with($redirect, '//');
     }
 
     /**

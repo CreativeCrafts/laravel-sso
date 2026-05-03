@@ -98,6 +98,8 @@ final readonly class BeginLoginService implements BeginLogin
             codeVerifier: $codeVerifier,
             withNonce: $withNonce,
             context: $attemptContext,
+            ip: $request->ip(),
+            userAgent: $request->userAgent(),
         );
 
         $this->events->dispatch(

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Core;
 
+use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuditContextSanitizer;
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
@@ -66,7 +67,7 @@ final readonly class HandleCallbackService implements HandleCallback
                 throw TenantScopedRecordNotFound::for(IdentityProvider::class, $identityProviderId);
             }
 
-            $attempt = $this->attempts->consumeByState(
+            $attempt = $this->attempts->reserveForValidation(
                 tenant: $tenant,
                 state: $state,
                 expectedConnectionId: $connection->id,
@@ -92,6 +93,7 @@ final readonly class HandleCallbackService implements HandleCallback
             $driver = $this->drivers->get($protocol);
 
             $result = $driver->handleCallback($request, $tenant, $connection, $attempt);
+            $attempt = $this->attempts->markConsumed($attempt);
 
             try {
                 $this->auditSucceeded(
@@ -119,6 +121,16 @@ final readonly class HandleCallbackService implements HandleCallback
 
             return $result;
         } catch (Throwable $e) {
+            if ($attempt instanceof AuthAttempt) {
+                try {
+                    $attempt = $this->attempts->markValidationFailed($attempt);
+                } catch (Throwable $markFailedException) {
+                    $this->logger->error('SSO auth attempt validation release failed', [
+                        'exception' => $markFailedException->getMessage(),
+                    ]);
+                }
+            }
+
             try {
                 $this->auditFailed(
                     tenant: $tenant,
