@@ -71,11 +71,11 @@
 
 ## 6. Admin Validation Design Cleanup
 
-- [ ] Replace `app(UrlTrustPolicy::class)` usage in admin validation trait.
-- [ ] Add explicit validation rule or validator service for trusted IdP URLs.
-- [ ] Add explicit validator service for OIDC/SAML IdP config structures if needed.
-- [ ] Preserve existing validation behavior and error messages where practical.
-- [ ] Add tests for admin validation through the new explicit dependency seam.
+- [x] Replace `app(UrlTrustPolicy::class)` usage in admin validation trait.
+- [x] Add explicit validation rule or validator service for trusted IdP URLs.
+- [x] Add explicit validator service for OIDC/SAML IdP config structures if needed.
+- [x] Preserve existing validation behavior and error messages where practical.
+- [x] Add tests for admin validation through the new explicit dependency seam.
 
 ## 7. Public API and Lifecycle Semantics
 
