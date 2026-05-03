@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: [ "8.3", "8.4" ]
+        php: [ "8.3", "8.4", "8.5" ]
         laravel: [ "12", "13" ]
         include:
           - laravel: "12"
@@ -81,6 +81,20 @@ jobs:
   coverage:
     runs-on: ubuntu-latest
     needs: checks
+    strategy:
+      fail-fast: false
+      matrix:
+        php: [ "8.3", "8.4", "8.5" ]
+        laravel: [ "12", "13" ]
+        include:
+          - laravel: "12"
+            dependency-version: "^12.0"
+            testbench-version: "^10.11"
+          - laravel: "13"
+            dependency-version: "^13.0"
+            testbench-version: "^11.0"
+
+    name: coverage (PHP ${{ matrix.php }}, Laravel ${{ matrix.laravel }})
 
     steps:
       - name: Checkout
@@ -89,7 +103,7 @@ jobs:
       - name: Setup PHP (coverage)
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.3"
+          php-version: ${{ matrix.php }}
           tools: composer:v2
           coverage: pcov
           extensions: mbstring, dom, sqlite, pdo_sqlite
@@ -102,17 +116,17 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-php-8.3-laravel-12-composer-${{ hashFiles('**/composer.lock') }}
+          key: ${{ runner.os }}-php-${{ matrix.php }}-laravel-${{ matrix.laravel }}-coverage-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
-            ${{ runner.os }}-php-8.3-laravel-12-composer-
+            ${{ runner.os }}-php-${{ matrix.php }}-laravel-${{ matrix.laravel }}-coverage-composer-
 
       - name: Install dependencies
         run: |
           composer require \
-            illuminate/contracts:^12.0 \
-            illuminate/database:^12.0 \
-            illuminate/support:^12.0 \
-            orchestra/testbench:^10.11 \
+            illuminate/contracts:${{ matrix.dependency-version }} \
+            illuminate/database:${{ matrix.dependency-version }} \
+            illuminate/support:${{ matrix.dependency-version }} \
+            orchestra/testbench:${{ matrix.testbench-version }} \
             --no-interaction \
             --no-progress \
             --prefer-dist \
