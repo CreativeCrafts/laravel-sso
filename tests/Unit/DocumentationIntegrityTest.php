@@ -13,6 +13,11 @@ it('keeps README local documentation links valid', function (): void {
 
     preg_match_all('/\[[^\]]+\]\(([^)]+)\)/', (string) $readme, $matches);
 
+    $githubVirtualTargets = [
+        '../../contributors',
+        '../../security/policy',
+    ];
+
     $missing = [];
 
     foreach ($matches[1] as $target) {
@@ -22,20 +27,17 @@ it('keeps README local documentation links valid', function (): void {
             continue;
         }
 
-        if (str_starts_with($target, '../../')) {
-            continue;
-        }
-
         $path = explode('#', $target, 2)[0];
         $path = explode('?', $path, 2)[0];
 
-        if ($path === '') {
+        if ($path === '' || in_array($path, $githubVirtualTargets, true)) {
             continue;
         }
 
-        $absolutePath = realpath($root . '/' . $path);
+        $candidatePath = $root . '/' . $path;
+        $absolutePath = realpath($candidatePath);
 
-        if ($absolutePath === false || !str_starts_with($absolutePath, $root) || !file_exists($absolutePath)) {
+        if ($absolutePath === false || !str_starts_with($absolutePath, $root . DIRECTORY_SEPARATOR) || !file_exists($absolutePath)) {
             $missing[] = $target;
         }
     }
