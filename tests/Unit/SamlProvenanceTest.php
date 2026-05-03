@@ -65,12 +65,12 @@ it('normalizes claims from the validated SAML context', function (): void {
 });
 
 it('requires claims normalization to receive a validated signed XML context', function (): void {
-    $method = new \ReflectionMethod(SamlClaimsNormalizer::class, 'normalize');
+    $method = new ReflectionMethod(SamlClaimsNormalizer::class, 'normalize');
     $parameter = $method->getParameters()[0];
     $type = $parameter->getType();
 
-    expect($type)->toBeInstanceOf(\ReflectionNamedType::class);
-    assert($type instanceof \ReflectionNamedType);
+    expect($type)->toBeInstanceOf(ReflectionNamedType::class);
+    assert($type instanceof ReflectionNamedType);
 
     expect($type->getName())->toBe(SamlSignedXml::class);
 });
@@ -97,7 +97,7 @@ function samlProvenanceSignedXml(
 </samlp:Response>
 XML;
 
-    $document = new \DOMDocument();
+    $document = new DOMDocument();
     $document->preserveWhiteSpace = true;
     $document->loadXML($xml);
 
