@@ -37,18 +37,22 @@ it('validates trusted IdP URLs through injected policy', function (): void {
 });
 
 it('delegates store request config validation through the admin validator contract', function (): void {
-    $calls = [];
+    $recorder = new class () {
+        /** @var array<int, array{protocol: string, config: array<string, mixed>}> */
+        public array $calls = [];
+    };
 
-    app()->bind(IdentityProviderConfigValidator::class, static function () use (&$calls): IdentityProviderConfigValidator {
-        return new class ($calls) implements IdentityProviderConfigValidator {
-            /** @param array<int, array{protocol: string, config: array<string, mixed>}> $calls */
-            public function __construct(private array &$calls)
+    app()->bind(IdentityProviderConfigValidator::class, static function () use ($recorder): IdentityProviderConfigValidator {
+        return new class ($recorder) implements IdentityProviderConfigValidator {
+            public function __construct(private readonly object $recorder)
             {
             }
 
             public function validate(Validator $validator, string $protocol, array $config): void
             {
-                $this->calls[] = [
+                /** @var object{calls: array<int, array{protocol: string, config: array<string, mixed>}>} $recorder */
+                $recorder = $this->recorder;
+                $recorder->calls[] = [
                     'protocol' => $protocol,
                     'config' => $config,
                 ];
@@ -74,7 +78,7 @@ it('delegates store request config validation through the admin validator contra
 
     expect($validator->fails())->toBeTrue()
         ->and($validator->errors()->get('config.discovery_url'))->toBe(['Injected validator was called.'])
-        ->and($calls)->toHaveCount(1)
-        ->and($calls[0]['protocol'])->toBe('oidc')
-        ->and($calls[0]['config']['client_id'])->toBe('client-one');
+        ->and($recorder->calls)->toHaveCount(1)
+        ->and($recorder->calls[0]['protocol'])->toBe('oidc')
+        ->and($recorder->calls[0]['config']['client_id'])->toBe('client-one');
 });
