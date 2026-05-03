@@ -281,14 +281,20 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         }
 
         $iat = $claims['iat'] ?? null;
-        if (is_int($iat) || is_float($iat)) {
-            if (($now + $skew) < (int)$iat) {
-                throw OidcIdTokenValidationFailed::make('iat is in the future');
+        if ((is_int($iat) || is_float($iat)) && ($now + $skew) < (int)$iat) {
+            throw OidcIdTokenValidationFailed::make('iat is in the future');
+        }
+
+        $maxAge = $this->maxAgeSeconds();
+        if ($maxAge !== null) {
+            $authTime = $claims['auth_time'] ?? null;
+
+            if (!is_int($authTime) && !is_float($authTime)) {
+                throw OidcIdTokenValidationFailed::make('auth_time missing');
             }
 
-            $maxAge = $this->maxAgeSeconds();
-            if ($maxAge !== null && ($now - $skew - (int)$iat) > $maxAge) {
-                throw OidcIdTokenValidationFailed::make('token too old');
+            if (($now - $skew - (int)$authTime) > $maxAge) {
+                throw OidcIdTokenValidationFailed::make('authentication too old');
             }
         }
 
