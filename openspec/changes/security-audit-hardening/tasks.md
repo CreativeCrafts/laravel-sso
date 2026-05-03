@@ -30,9 +30,9 @@
 - [ ] Require `azp` to equal configured `client_id` when present for multi-audience tokens.
 - [ ] Validate `nbf` when present.
 - [ ] Validate future `iat` outside skew.
-- [ ] Add optional `max_age_seconds` support for old `iat` values.
+- [ ] Add optional `max_age_seconds` support using `auth_time` freshness.
 - [ ] Fail closed when JWT header declares `kid` and JWKS has no matching key.
-- [ ] Add tests for `azp`, `nbf`, `iat`, `max_age_seconds`, and unknown `kid` behavior.
+- [ ] Add tests for `azp`, `nbf`, `iat`, `max_age_seconds`/`auth_time`, and unknown `kid` behavior.
 
 ## 4. Auth Attempt Lifecycle
 
