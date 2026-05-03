@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Protocol\Oidc;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\IdpOutboundUrlPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher;
 use CreativeCrafts\LaravelSso\Exceptions\OidcJwksFetchFailed;
@@ -18,6 +19,7 @@ final class CachedOidcJwksFetcher implements OidcJwksFetcher
         private readonly OidcEndpointResolver $endpoints,
         private readonly HttpFactory $http,
         private readonly CacheRepository $cache,
+        private readonly IdpOutboundUrlPolicy $outboundUrls,
     ) {
     }
 
@@ -33,8 +35,11 @@ final class CachedOidcJwksFetcher implements OidcJwksFetcher
             try {
                 $timeout = $this->timeoutSeconds();
 
+                $this->outboundUrls->assertTrustedForRequest($url, 'jwks_uri');
+
                 $response = $this->http
                   ->timeout($timeout)
+                  ->withOptions(['allow_redirects' => false])
                   ->acceptJson()
                   ->get($url);
 
