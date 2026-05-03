@@ -62,32 +62,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (!Schema::hasTable('sso_auth_attempts')) {
-            return;
-        }
-
-        Schema::table('sso_auth_attempts', function (Blueprint $table): void {
-            if (Schema::hasColumn('sso_auth_attempts', 'validating_at')) {
-                $table->dropIndex('sso_auth_attempts_tenant_validating_at_index');
-            }
-
-            if (Schema::hasColumn('sso_auth_attempts', 'status')) {
-                $table->dropIndex('sso_auth_attempts_tenant_status_index');
-            }
-        });
-
-        Schema::table('sso_auth_attempts', function (Blueprint $table): void {
-            if (Schema::hasColumn('sso_auth_attempts', 'failed_at')) {
-                $table->dropColumn('failed_at');
-            }
-
-            if (Schema::hasColumn('sso_auth_attempts', 'validating_at')) {
-                $table->dropColumn('validating_at');
-            }
-
-            if (Schema::hasColumn('sso_auth_attempts', 'status')) {
-                $table->dropColumn('status');
-            }
-        });
+        // Intentionally no-op.
+        //
+        // This migration is an additive upgrade bridge for installations that
+        // already ran an older create_sso_tables migration. Fresh installations
+        // get these columns from create_sso_tables directly, so a destructive
+        // down() here would incorrectly remove columns owned by the base schema.
     }
 };
