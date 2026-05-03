@@ -91,7 +91,7 @@
 
 - [x] Align README compatibility text with Composer constraints.
 - [x] Decide whether Laravel 13 support is official or provisional.
-- [ ] If Laravel 13 is official, add CI coverage for it.
+- [x] If Laravel 13 is official, add CI coverage for it.
 - [x] Remove placeholder PHPStan exclusions.
 - [ ] Consider enabling `reportUnmatchedIgnoredErrors` once baseline noise is resolved.
 - [x] Update operator documentation for unsafe URL overrides, claim persistence, PKCE pruning, and SAML strictness.
