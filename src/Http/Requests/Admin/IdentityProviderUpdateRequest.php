@@ -54,13 +54,7 @@ final class IdentityProviderUpdateRequest extends FormRequest
             /** @var array<string, mixed> $config */
             $config = is_array($configRaw) ? $this->stringKeyedArray($configRaw) : [];
 
-            if ($protocolRaw === 'oidc') {
-                $this->validateOidcConfig($validator, $config);
-            }
-
-            if ($protocolRaw === 'saml') {
-                $this->validateSamlConfig($validator, $config);
-            }
+            $this->validateIdentityProviderConfig($validator, $protocolRaw, $config);
         });
     }
 }
