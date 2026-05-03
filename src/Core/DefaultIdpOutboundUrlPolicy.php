@@ -40,7 +40,7 @@ final readonly class DefaultIdpOutboundUrlPolicy implements IdpOutboundUrlPolicy
 
         foreach ($addresses as $address) {
             if (!$this->isAllowedIpAddress($address)) {
-                throw UnsafeIdpUrl::forField($field, 'URL host resolves to a private or reserved address.');
+                throw UnsafeIdpUrl::forField($field, 'URL host does not resolve to a globally reachable address.');
             }
         }
     }
@@ -72,7 +72,7 @@ final readonly class DefaultIdpOutboundUrlPolicy implements IdpOutboundUrlPolicy
         return filter_var(
             $address,
             FILTER_VALIDATE_IP,
-            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE,
+            FILTER_FLAG_GLOBAL_RANGE,
         ) !== false;
     }
 }
