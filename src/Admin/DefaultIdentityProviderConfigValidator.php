@@ -142,7 +142,7 @@ final readonly class DefaultIdentityProviderConfigValidator implements IdentityP
                 continue;
             }
 
-            if (openssl_x509_read($cert) === false) {
+            if (@openssl_x509_read($cert) === false) {
                 $validator->errors()->add('config.saml_signing_certs_pem.' . $i, 'Each certificate must be a valid PEM encoded X.509 certificate.');
             }
         }
