@@ -8,6 +8,7 @@ use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionExtractor;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsMapper;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Core\Dto\Claims;
+use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
 
 final readonly class DefaultSamlClaimsNormalizer implements SamlClaimsNormalizer
 {
@@ -17,9 +18,9 @@ final readonly class DefaultSamlClaimsNormalizer implements SamlClaimsNormalizer
     ) {
     }
 
-    public function normalize(string $samlResponseXml): Claims
+    public function normalize(SamlSignedXml $signed): Claims
     {
-        $extracted = $this->extractor->extract($samlResponseXml);
+        $extracted = $this->extractor->extract($signed);
 
         /** @var string $nameId */
         $nameId = $extracted['nameId'];
