@@ -5,6 +5,9 @@ declare(strict_types=1);
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\UrlTrustPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher;
+use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptAlreadyConsumed;
+use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptExpired;
+use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptValidationInProgress;
 use CreativeCrafts\LaravelSso\Exceptions\OidcIdTokenValidationFailed;
 use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureInvalid;
 use CreativeCrafts\LaravelSso\Http\Controllers\Concerns\HandlesCallbackResponse;
@@ -98,6 +101,73 @@ it('reserves auth attempts before validation and only consumes after success', f
 
     expect($consumed->status)->toBe(AuthAttempt::STATUS_CONSUMED)
         ->and($consumed->consumed_at)->not->toBeNull();
+});
+
+it('rejects fresh auth attempt validation locks', function (): void {
+    config()->set('sso.attempts.validation_lock_ttl_seconds', 120);
+
+    [$tenant, $attempt, $service] = createValidationLockFixture();
+
+    $service->reserveForValidation($tenant, $attempt->state);
+
+    expect(fn () => $service->reserveForValidation($tenant, $attempt->state))
+        ->toThrow(AuthAttemptValidationInProgress::class);
+});
+
+it('recovers stale auth attempt validation locks', function (): void {
+    config()->set('sso.attempts.validation_lock_ttl_seconds', 120);
+
+    [$tenant, $attempt, $service] = createValidationLockFixture();
+
+    $service->reserveForValidation($tenant, $attempt->state);
+
+    AuthAttempt::query()
+        ->whereKey($attempt->id)
+        ->update([
+            'status' => AuthAttempt::STATUS_VALIDATING,
+            'validating_at' => now()->subSeconds(121),
+        ]);
+
+    $recovered = $service->reserveForValidation($tenant, $attempt->state);
+
+    expect($recovered->status)->toBe(AuthAttempt::STATUS_VALIDATING)
+        ->and($recovered->validating_at)->not->toBeNull()
+        ->and($recovered->validating_at->greaterThan(now()->subSeconds(10)))->toBeTrue()
+        ->and($recovered->consumed_at)->toBeNull();
+});
+
+it('keeps consumed stale validation locks replay-protected', function (): void {
+    config()->set('sso.attempts.validation_lock_ttl_seconds', 120);
+
+    [$tenant, $attempt, $service] = createValidationLockFixture();
+
+    AuthAttempt::query()
+        ->whereKey($attempt->id)
+        ->update([
+            'status' => AuthAttempt::STATUS_CONSUMED,
+            'consumed_at' => now()->subSeconds(300),
+            'validating_at' => now()->subSeconds(300),
+        ]);
+
+    expect(fn () => $service->reserveForValidation($tenant, $attempt->state))
+        ->toThrow(AuthAttemptAlreadyConsumed::class);
+});
+
+it('keeps expired stale validation locks rejected', function (): void {
+    config()->set('sso.attempts.validation_lock_ttl_seconds', 120);
+
+    [$tenant, $attempt, $service] = createValidationLockFixture();
+
+    AuthAttempt::query()
+        ->whereKey($attempt->id)
+        ->update([
+            'status' => AuthAttempt::STATUS_VALIDATING,
+            'validating_at' => now()->subSeconds(300),
+            'expires_at' => now()->subSecond(),
+        ]);
+
+    expect(fn () => $service->reserveForValidation($tenant, $attempt->state))
+        ->toThrow(AuthAttemptExpired::class);
 });
 
 it('blocks protocol-relative callback redirects', function (): void {
@@ -220,6 +290,29 @@ XML;
     expect(fn () => $validator->validate($xml, []))
         ->toThrow(SamlSignatureInvalid::class);
 });
+
+/**
+ * @return array{0: Tenant, 1: AuthAttempt, 2: AuthAttemptService}
+ */
+function createValidationLockFixture(): array
+{
+    $tenant = Tenant::query()->create([
+        'ulid' => '01HR0000000000000000000003',
+        'name' => 'Acme',
+        'metadata' => [],
+    ]);
+
+    /** @var AuthAttemptService $service */
+    $service = app(AuthAttemptService::class);
+
+    $attempt = $service->create(
+        tenant: $tenant,
+        protocol: 'oidc',
+        withNonce: true,
+    );
+
+    return [$tenant, $attempt, $service];
+}
 
 /**
  * @return array{0: string, 1: array<string, mixed>}
