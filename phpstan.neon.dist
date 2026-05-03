@@ -16,7 +16,7 @@ parameters:
     checkUnionTypes: true
     treatPhpDocTypesAsCertain: true
     inferPrivatePropertyTypeFromConstructor: true
-    reportUnmatchedIgnoredErrors: false
+    reportUnmatchedIgnoredErrors: true
 
     parallel:
         maximumNumberOfProcesses: 0
