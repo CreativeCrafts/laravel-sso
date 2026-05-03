@@ -76,7 +76,7 @@ it('honors configured attribute mapping keys', function () {
 
 function samlClaimsSignedXml(string $xml, string $validatedAssertionId): SamlSignedXml
 {
-    $document = new \DOMDocument();
+    $document = new DOMDocument();
     $document->preserveWhiteSpace = true;
     $document->loadXML($xml);
 
