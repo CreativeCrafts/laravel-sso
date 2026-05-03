@@ -10,6 +10,7 @@ use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
 use DOMDocument;
 use ReflectionMethod;
+use ReflectionNamedType;
 
 it('extracts claims from the signed assertion id', function (): void {
     $signed = samlProvenanceSignedXml(
@@ -71,7 +72,10 @@ it('requires claims normalization to receive a validated signed XML context', fu
     $parameter = $method->getParameters()[0];
     $type = $parameter->getType();
 
-    expect($type?->getName())->toBe(SamlSignedXml::class);
+    expect($type)->toBeInstanceOf(ReflectionNamedType::class);
+    assert($type instanceof ReflectionNamedType);
+
+    expect($type->getName())->toBe(SamlSignedXml::class);
 });
 
 function samlProvenanceSignedXml(
