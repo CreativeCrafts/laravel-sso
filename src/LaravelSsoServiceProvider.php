@@ -92,6 +92,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             ->name('laravel-sso')
             ->hasConfigFile('sso')
             ->hasMigration('create_sso_tables')
+            ->hasMigration('add_lifecycle_fields_to_sso_auth_attempts')
             ->hasViews()
             ->hasCommands([
                 SsoInstallCommand::class,

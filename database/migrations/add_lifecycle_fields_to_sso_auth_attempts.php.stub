@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (!Schema::hasTable('sso_auth_attempts')) {
+            return;
+        }
+
+        $addedStatus = false;
+        $addedValidatingAt = false;
+
+        Schema::table('sso_auth_attempts', function (Blueprint $table) use (&$addedStatus, &$addedValidatingAt): void {
+            if (!Schema::hasColumn('sso_auth_attempts', 'status')) {
+                $table->string('status', 32)->default('pending')->after('consumed_at');
+                $addedStatus = true;
+            }
+
+            if (!Schema::hasColumn('sso_auth_attempts', 'validating_at')) {
+                $table->timestamp('validating_at')->nullable()->after('status');
+                $addedValidatingAt = true;
+            }
+
+            if (!Schema::hasColumn('sso_auth_attempts', 'failed_at')) {
+                $table->timestamp('failed_at')->nullable()->after('validating_at');
+            }
+        });
+
+        if (Schema::hasColumn('sso_auth_attempts', 'status')) {
+            DB::table('sso_auth_attempts')
+                ->whereNotNull('consumed_at')
+                ->update(['status' => 'consumed']);
+
+            DB::table('sso_auth_attempts')
+                ->whereNull('consumed_at')
+                ->where(function ($query): void {
+                    $query->whereNull('status')->orWhere('status', '');
+                })
+                ->update(['status' => 'pending']);
+        }
+
+        if ($addedStatus || $addedValidatingAt) {
+            Schema::table('sso_auth_attempts', function (Blueprint $table) use ($addedStatus, $addedValidatingAt): void {
+                if ($addedStatus) {
+                    $table->index(['tenant_id', 'status'], 'sso_auth_attempts_tenant_status_index');
+                }
+
+                if ($addedValidatingAt) {
+                    $table->index(['tenant_id', 'validating_at'], 'sso_auth_attempts_tenant_validating_at_index');
+                }
+            });
+        }
+    }
+
+    public function down(): void
+    {
+        // Intentionally no-op.
+        //
+        // This migration is an additive upgrade bridge for installations that
+        // already ran an older create_sso_tables migration. Fresh installations
+        // get these columns from create_sso_tables directly, so a destructive
+        // down() here would incorrectly remove columns owned by the base schema.
+    }
+};

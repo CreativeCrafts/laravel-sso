@@ -2,17 +2,17 @@
 
 ## 1. Upgrade Safety
 
-- [ ] Add package upgrade migration for auth-attempt lifecycle fields.
-- [ ] Add `status` column when missing.
-- [ ] Add `validating_at` column when missing.
-- [ ] Add `failed_at` column when missing.
-- [ ] Add or preserve indexes for lifecycle query paths where portable.
-- [ ] Backfill consumed attempts to `status = consumed`.
-- [ ] Backfill non-consumed attempts to `status = pending`.
-- [ ] Ensure new-install migration stub and upgrade migration remain schema-compatible.
-- [ ] Document pruning stale auth attempts before encrypted PKCE verifier rollout.
-- [ ] Add tests for upgrading from old auth-attempt schema.
-- [ ] Add tests for backfill behavior.
+- [x] Add package upgrade migration for auth-attempt lifecycle fields.
+- [x] Add `status` column when missing.
+- [x] Add `validating_at` column when missing.
+- [x] Add `failed_at` column when missing.
+- [x] Add or preserve indexes for lifecycle query paths where portable.
+- [x] Backfill consumed attempts to `status = consumed`.
+- [x] Backfill non-consumed attempts to `status = pending`.
+- [x] Ensure new-install migration stub and upgrade migration remain schema-compatible.
+- [x] Document pruning stale auth attempts before encrypted PKCE verifier rollout.
+- [x] Add tests for upgrading from old auth-attempt schema.
+- [x] Add tests for backfill behavior.
 
 ## 2. Auth-Attempt Validation Lock Recovery
 
