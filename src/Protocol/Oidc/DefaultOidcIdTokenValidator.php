@@ -271,29 +271,28 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         $now = time();
         $skew = $this->clockSkewSeconds();
 
-        if (($now - $skew) >= (int)$exp) {
+        if (($now - $skew) >= (int) $exp) {
             throw OidcIdTokenValidationFailed::make('token expired');
         }
 
-        $nbf = $claims['nbf'] ?? null;
-        if ((is_int($nbf) || is_float($nbf)) && ($now + $skew) < (int)$nbf) {
+        $nbf = $this->optionalNumericDateClaim($claims, 'nbf');
+        if ($nbf !== null && ($now + $skew) < $nbf) {
             throw OidcIdTokenValidationFailed::make('token not yet valid');
         }
 
-        $iat = $claims['iat'] ?? null;
-        if ((is_int($iat) || is_float($iat)) && ($now + $skew) < (int)$iat) {
+        $iat = $this->optionalNumericDateClaim($claims, 'iat');
+        if ($iat !== null && ($now + $skew) < $iat) {
             throw OidcIdTokenValidationFailed::make('iat is in the future');
         }
 
+        $authTime = $this->optionalNumericDateClaim($claims, 'auth_time');
         $maxAge = $this->maxAgeSeconds();
         if ($maxAge !== null) {
-            $authTime = $claims['auth_time'] ?? null;
-
-            if (!is_int($authTime) && !is_float($authTime)) {
+            if ($authTime === null) {
                 throw OidcIdTokenValidationFailed::make('auth_time missing');
             }
 
-            if (($now - $skew - (int)$authTime) > $maxAge) {
+            if (($now - $skew - $authTime) > $maxAge) {
                 throw OidcIdTokenValidationFailed::make('authentication too old');
             }
         }
@@ -308,6 +307,24 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         ) {
             throw OidcIdTokenValidationFailed::make('nonce mismatch');
         }
+    }
+
+    /**
+     * @param array<string, mixed> $claims
+     */
+    private function optionalNumericDateClaim(array $claims, string $name): ?int
+    {
+        if (!array_key_exists($name, $claims)) {
+            return null;
+        }
+
+        $value = $claims[$name];
+
+        if (!is_int($value) && !is_float($value)) {
+            throw OidcIdTokenValidationFailed::make("{$name} must be numeric");
+        }
+
+        return (int) $value;
     }
 
     /**
@@ -379,8 +396,8 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
             return $value;
         }
 
-        if (is_string($value) && ctype_digit($value) && (int)$value > 0) {
-            return (int)$value;
+        if (is_string($value) && ctype_digit($value) && (int) $value > 0) {
+            return (int) $value;
         }
 
         return null;
@@ -395,7 +412,7 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         }
 
         if (is_string($value) && ctype_digit($value)) {
-            return (int)$value;
+            return (int) $value;
         }
 
         return $default;

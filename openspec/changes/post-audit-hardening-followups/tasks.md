@@ -88,12 +88,12 @@
 
 ## 8. OIDC Temporal Claim Strictness
 
-- [ ] Reject present-but-non-numeric `iat`.
-- [ ] Reject present-but-non-numeric `nbf`.
-- [ ] Decide whether present-but-non-numeric `auth_time` should fail even when max-age is disabled.
-- [ ] Add tests for malformed `iat`.
-- [ ] Add tests for malformed `nbf`.
-- [ ] Add tests for malformed `auth_time` based on the chosen behavior.
+- [x] Reject present-but-non-numeric `iat`.
+- [x] Reject present-but-non-numeric `nbf`.
+- [x] Decide whether present-but-non-numeric `auth_time` should fail even when max-age is disabled.
+- [x] Add tests for malformed `iat`.
+- [x] Add tests for malformed `nbf`.
+- [x] Add tests for malformed `auth_time` based on the chosen behavior.
 
 ## 9. Redirect Edge-Case Coverage
 
@@ -119,5 +119,5 @@
 - [ ] Run `vendor/bin/phpstan analyse`.
 - [ ] Run `vendor/bin/pest`.
 - [ ] Run `vendor/bin/pest --coverage --coverage-text`.
-- [ ] Confirm CI matrix passes PHP 8.3, 8.4, and 8.5 with Laravel 12 and 13.
+- [ ] Confirm CI matrix passes PHP 8.3, 8.4, and 8.5 with Laravel 12 and Laravel 13.
 - [ ] Update release notes/changelog for all upgrade and security-relevant behavior changes.
