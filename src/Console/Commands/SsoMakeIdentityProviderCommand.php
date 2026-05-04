@@ -18,7 +18,7 @@ final class SsoMakeIdentityProviderCommand extends Command
     {
         $tenantUlid = $this->argument('tenant_ulid');
 
-        if ($tenantUlid === '') {
+        if (!is_string($tenantUlid) || $tenantUlid === '') {
             $this->components->error('Tenant ULID must be a non-empty string.');
             return self::FAILURE;
         }
