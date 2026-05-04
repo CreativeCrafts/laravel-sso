@@ -61,6 +61,12 @@ final class DbAuthAttemptService implements AuthAttemptService
     }
 
     /**
+     * Reserve a callback attempt for protocol validation under a row lock.
+     *
+     * This is the canonical OIDC/SAML callback transition from pending to
+     * validating. Fresh validation locks reject concurrent callbacks; stale
+     * validation locks may be recovered after the configured lock TTL.
+     *
      * @throws Throwable
      */
     public function reserveForValidation(
@@ -90,6 +96,11 @@ final class DbAuthAttemptService implements AuthAttemptService
     }
 
     /**
+     * Complete a successfully validated attempt.
+     *
+     * Consumed is terminal. A consumed attempt must continue rejecting replayed
+     * callbacks even when failed_at was previously set by a retryable failure.
+     *
      * @throws Throwable
      */
     public function markConsumed(AuthAttempt $attempt): AuthAttempt
@@ -120,6 +131,13 @@ final class DbAuthAttemptService implements AuthAttemptService
     }
 
     /**
+     * Record a retryable protocol-validation failure.
+     *
+     * The attempt intentionally returns to pending instead of transitioning to
+     * STATUS_FAILED. failed_at is the audit/debug marker for the failed
+     * validation, while pending keeps the attempt retryable until expiration or
+     * successful consumption.
+     *
      * @throws Throwable
      */
     public function markValidationFailed(AuthAttempt $attempt): AuthAttempt
@@ -150,6 +168,13 @@ final class DbAuthAttemptService implements AuthAttemptService
     }
 
     /**
+     * Legacy atomic consume helper.
+     *
+     * This method is replay-safe, but it reserves and consumes in one operation.
+     * Protocol callbacks that need to validate provider data before consuming
+     * must use reserveForValidation() followed by markConsumed() or
+     * markValidationFailed() instead.
+     *
      * @throws Throwable
      */
     public function consumeByState(
