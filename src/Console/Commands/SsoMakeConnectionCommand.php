@@ -19,7 +19,7 @@ final class SsoMakeConnectionCommand extends Command
     {
         $tenantUlid = $this->argument('tenant_ulid');
 
-        if (!is_string($tenantUlid) || $tenantUlid === '') {
+        if ($tenantUlid === '') {
             $this->components->error('Tenant ULID must be a non-empty string.');
             return self::FAILURE;
         }
@@ -31,14 +31,12 @@ final class SsoMakeConnectionCommand extends Command
             return self::FAILURE;
         }
 
-        $idpArg = $this->argument('idp_id');
+        $idpId = (int)$this->argument('idp_id');
 
-        if (!is_int($idpArg) && !(is_string($idpArg) && ctype_digit($idpArg))) {
+        if ($idpId === 0) {
             $this->components->error('Identity provider id must be an integer.');
             return self::FAILURE;
         }
-
-        $idpId = (int) $idpArg;
 
         $idp = IdentityProvider::query()->where('tenant_id', $tenant->id)->find($idpId);
 

@@ -19,7 +19,7 @@ final class SsoMakeTenantCommand extends Command
         $name = $this->argument('name') ?? $this->ask('Tenant name', 'Default Tenant');
         $ulid = $this->option('ulid') ?: (string) Str::ulid();
 
-        if (!is_string($ulid) || !Str::isUlid($ulid)) {
+        if (!Str::isUlid($ulid)) {
             $this->components->error('The provided ULID is invalid.');
             return self::FAILURE;
         }
