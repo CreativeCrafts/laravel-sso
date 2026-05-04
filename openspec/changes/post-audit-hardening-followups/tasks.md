@@ -79,12 +79,12 @@
 
 ## 7. Public API and Lifecycle Semantics
 
-- [ ] Decide whether `STATUS_FAILED` should be used, renamed, documented, or removed.
-- [ ] Document retryable failure semantics when `failed_at` is set and status returns to `pending`.
-- [ ] Add PHPDoc warning to `AuthAttemptService::consumeByState()`.
-- [ ] Add implementation PHPDoc warning to `DbAuthAttemptService::consumeByState()`.
-- [ ] Consider deprecating `consumeByState()` for next major if external use is not required.
-- [ ] Add tests or documentation for valid public lifecycle transition usage.
+- [x] Decide whether `STATUS_FAILED` should be used, renamed, documented, or removed.
+- [x] Document retryable failure semantics when `failed_at` is set and status returns to `pending`.
+- [x] Add PHPDoc warning to `AuthAttemptService::consumeByState()`.
+- [x] Add implementation PHPDoc warning to `DbAuthAttemptService::consumeByState()`.
+- [x] Consider deprecating `consumeByState()` for next major if external use is not required.
+- [x] Add tests or documentation for valid public lifecycle transition usage.
 
 ## 8. OIDC Temporal Claim Strictness
 

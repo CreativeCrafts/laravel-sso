@@ -30,9 +30,31 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  */
 final class AuthAttempt extends Model
 {
+    /**
+     * The attempt is available for callback validation.
+     *
+     * Retryable validation failures also return to this state while preserving
+     * the most recent failure timestamp in failed_at.
+     */
     public const string STATUS_PENDING = 'pending';
+
+    /**
+     * The attempt is currently reserved by a callback validator.
+     */
     public const string STATUS_VALIDATING = 'validating';
+
+    /**
+     * The attempt has completed successfully and must reject replay attempts.
+     */
     public const string STATUS_CONSUMED = 'consumed';
+
+    /**
+     * Reserved for legacy/manual diagnostic states.
+     *
+     * Runtime retryable validation failures do not transition to this status.
+     * They set failed_at and return to STATUS_PENDING so the same browser/IdP
+     * callback may be retried until the attempt expires or is consumed.
+     */
     public const string STATUS_FAILED = 'failed';
 
     protected $table = 'sso_auth_attempts';
@@ -110,5 +132,10 @@ final class AuthAttempt extends Model
     public function isValidating(): bool
     {
         return $this->status === self::STATUS_VALIDATING;
+    }
+
+    public function hasRetryableValidationFailure(): bool
+    {
+        return $this->status === self::STATUS_PENDING && $this->failed_at !== null && !$this->isConsumed();
     }
 }
