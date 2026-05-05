@@ -21,12 +21,15 @@ return new class extends Migration
             return;
         }
 
-        $driver = DB::connection()->getDriverName();
+        $connection = DB::connection();
+        $driver = $connection->getDriverName();
+        $table = $connection->getQueryGrammar()->wrapTable('sso_identity_providers');
+        $column = $connection->getQueryGrammar()->wrap('config');
 
         match ($driver) {
-            'mysql', 'mariadb' => DB::statement('ALTER TABLE sso_identity_providers MODIFY config LONGTEXT NULL'),
-            'pgsql' => DB::statement('ALTER TABLE sso_identity_providers ALTER COLUMN config TYPE TEXT USING config::text'),
-            'sqlsrv' => DB::statement('ALTER TABLE sso_identity_providers ALTER COLUMN config NVARCHAR(MAX) NULL'),
+            'mysql', 'mariadb' => DB::statement("ALTER TABLE {$table} MODIFY {$column} LONGTEXT NULL"),
+            'pgsql' => DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} TYPE TEXT USING {$column}::text"),
+            'sqlsrv' => DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} NVARCHAR(MAX) NULL"),
             default => null,
         };
     }
