@@ -97,12 +97,12 @@
 
 ## 9. Redirect Edge-Case Coverage
 
-- [ ] Add tests for encoded protocol-relative paths such as `/%2F%2Fevil.example`.
-- [ ] Add tests for encoded backslash paths such as `/%5Cevil.example`.
-- [ ] Add tests for literal backslash local paths.
-- [ ] Add tests for encoded or decoded control-character redirect values.
-- [ ] Decide whether encoded protocol-relative paths are allowed as literal local paths or rejected.
-- [ ] Document redirect edge-case decisions through tests.
+- [x] Add tests for encoded protocol-relative paths such as `/%2F%2Fevil.example`.
+- [x] Add tests for encoded backslash paths such as `/%5Cevil.example`.
+- [x] Add tests for literal backslash local paths.
+- [x] Add tests for encoded or decoded control-character redirect values.
+- [x] Decide whether encoded protocol-relative paths are allowed as literal local paths or rejected.
+- [x] Document redirect edge-case decisions through tests.
 
 ## 10. Contributor DX for Laravel Matrix
 

@@ -82,12 +82,18 @@ trait HandlesCallbackResponse
         }
 
         $redirect = trim($redirect);
+        $decodedRedirect = rawurldecode($redirect);
 
-        if ($redirect === '' || $this->containsUnsafeRedirectCharacters($redirect)) {
+        if (
+            $redirect === '' ||
+            $decodedRedirect === '' ||
+            $this->containsUnsafeRedirectCharacters($redirect) ||
+            $this->containsUnsafeRedirectCharacters($decodedRedirect)
+        ) {
             return '/';
         }
 
-        if ($this->isSafeLocalRedirectPath($redirect)) {
+        if ($this->isSafeLocalRedirectPath($redirect, $decodedRedirect)) {
             return $redirect;
         }
 
@@ -114,13 +120,17 @@ trait HandlesCallbackResponse
         return str_contains($redirect, '\\');
     }
 
-    private function isSafeLocalRedirectPath(string $redirect): bool
+    private function isSafeLocalRedirectPath(string $redirect, string $decodedRedirect): bool
     {
         if (!str_starts_with($redirect, '/')) {
             return false;
         }
 
-        return !str_starts_with($redirect, '//');
+        if (str_starts_with($redirect, '//')) {
+            return false;
+        }
+
+        return !str_starts_with($decodedRedirect, '//');
     }
 
     /**
