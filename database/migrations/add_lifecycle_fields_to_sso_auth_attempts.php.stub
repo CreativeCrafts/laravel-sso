@@ -11,6 +11,31 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $this->upgradeIdentityProviderConfigColumn();
+        $this->upgradeAuthAttemptLifecycleColumns();
+    }
+
+    private function upgradeIdentityProviderConfigColumn(): void
+    {
+        if (!Schema::hasTable('sso_identity_providers') || !Schema::hasColumn('sso_identity_providers', 'config')) {
+            return;
+        }
+
+        $connection = DB::connection();
+        $driver = $connection->getDriverName();
+        $table = $connection->getQueryGrammar()->wrapTable('sso_identity_providers');
+        $column = $connection->getQueryGrammar()->wrap('config');
+
+        match ($driver) {
+            'mysql', 'mariadb' => DB::statement("ALTER TABLE {$table} MODIFY {$column} LONGTEXT NULL"),
+            'pgsql' => DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} TYPE TEXT USING {$column}::text"),
+            'sqlsrv' => DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} NVARCHAR(MAX) NULL"),
+            default => null,
+        };
+    }
+
+    private function upgradeAuthAttemptLifecycleColumns(): void
+    {
         if (!Schema::hasTable('sso_auth_attempts')) {
             return;
         }
@@ -66,7 +91,8 @@ return new class extends Migration
         //
         // This migration is an additive upgrade bridge for installations that
         // already ran an older create_sso_tables migration. Fresh installations
-        // get these columns from create_sso_tables directly, so a destructive
-        // down() here would incorrectly remove columns owned by the base schema.
+        // get these columns from create_sso_tables directly, and reverting the
+        // IdP config column back to JSON would reintroduce the MySQL failure
+        // because encrypted ciphertext is not valid JSON.
     }
 };
