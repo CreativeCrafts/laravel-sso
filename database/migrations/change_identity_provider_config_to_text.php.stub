@@ -1,0 +1,35 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (!Schema::hasTable('sso_identity_providers') || !Schema::hasColumn('sso_identity_providers', 'config')) {
+            return;
+        }
+
+        $driver = DB::connection()->getDriverName();
+
+        match ($driver) {
+            'mysql', 'mariadb' => DB::statement('ALTER TABLE sso_identity_providers MODIFY config LONGTEXT NULL'),
+            'pgsql' => DB::statement('ALTER TABLE sso_identity_providers ALTER COLUMN config TYPE TEXT USING config::text'),
+            'sqlsrv' => DB::statement('ALTER TABLE sso_identity_providers ALTER COLUMN config NVARCHAR(MAX) NULL'),
+            default => null,
+        };
+    }
+
+    public function down(): void
+    {
+        // Intentionally no-op.
+        //
+        // This migration changes a column to match the encrypted:array Eloquent
+        // cast. Reverting to a JSON column would reintroduce the MySQL runtime
+        // failure because encrypted ciphertext is not valid JSON.
+    }
+};
