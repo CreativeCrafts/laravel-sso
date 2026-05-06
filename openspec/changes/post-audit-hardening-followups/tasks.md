@@ -106,10 +106,10 @@
 
 ## 10. Contributor DX for Laravel Matrix
 
-- [ ] Add local Laravel 12 dependency-set testing guidance.
-- [ ] Add local Laravel 13 dependency-set testing guidance.
-- [ ] Decide whether to add Composer scripts for matrix testing or keep guidance in docs only.
-- [ ] Document that CI is the source of truth for PHP/Laravel matrix support.
+- [x] Add local Laravel 12 dependency-set testing guidance.
+- [x] Add local Laravel 13 dependency-set testing guidance.
+- [x] Decide whether to add Composer scripts for matrix testing or keep guidance in docs only.
+- [x] Document that CI is the source of truth for PHP/Laravel matrix support.
 
 ## 11. Release Readiness
 
