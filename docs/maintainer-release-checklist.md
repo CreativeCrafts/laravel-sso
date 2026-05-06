@@ -23,6 +23,8 @@ vendor/bin/pest
 vendor/bin/pest --coverage --coverage-text
 ```
 
+For local reproduction of a specific dependency set, use `docs/contributor-matrix-testing.md`.
+
 ## CI matrix
 
 CI is the source of truth for dependency-set validation. The release branch must pass checks and coverage for:
@@ -60,6 +62,7 @@ Confirm README-linked docs exist:
 - `docs/upgrade-guide.md`
 - `docs/maintainer-release-checklist.md`
 - `docs/architecture-audit.md`
+- `docs/contributor-matrix-testing.md`
 
 Run the README link integrity test before release.
 
