@@ -21,7 +21,7 @@ vendor/bin/pest
 vendor/bin/pest --coverage --coverage-text
 ```
 
-CI is the source of truth for the supported PHP and Laravel matrix.
+CI is the source of truth for the supported PHP and Laravel matrix. See `docs/contributor-matrix-testing.md` when you need to reproduce a specific Laravel 12, Laravel 13, PHP 8.3, PHP 8.4, or PHP 8.5 dependency set locally.
 
 ## Pull request expectations
 
