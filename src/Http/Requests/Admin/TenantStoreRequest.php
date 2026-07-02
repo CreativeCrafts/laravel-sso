@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 
 use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
+use CreativeCrafts\LaravelSso\Http\Requests\Admin\Rules\UniqueTenantUlid;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 
@@ -24,7 +25,7 @@ final class TenantStoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-          'ulid' => ['required', 'string', 'max:64', 'unique:sso_tenants,ulid'],
+          'ulid' => ['required', 'string', 'max:64', new UniqueTenantUlid()],
           'name' => ['nullable', 'string', 'max:255'],
           'metadata' => ['nullable', 'array'],
         ];

@@ -4,24 +4,15 @@ All notable changes to `creativecrafts/laravel-sso` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v1.0.1](https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.1/compare/v1.0.1...v1.0.1) - 2026-07-02
-
-Patch release addressing documentation accuracy gaps and PR #106 code review follow-ups.
+## [1.0.2] - 2026-07-02
 
 ### Fixed
 
-- OIDC `allowed_algorithms` guard stays aligned with RS256-only JWKS verification.
-- Tenant ULID lookups are case-insensitive; admin API normalizes ULID-shaped values to uppercase on write.
+- Admin tenant ULID validation is case-insensitive via `UniqueTenantUlid`, preventing duplicate tenants that differ only by casing.
+- Tenant updates ignore the resolved tenant row when validating ULID changes, so lowercase route keys with matching payload ULIDs no longer return 422.
+- `sso:make-tenant` normalizes ULID-shaped values to uppercase on create.
 
-### Documentation
-
-- Correct SAML getting-started IdP config keys.
-- Fix HTTP status mappings and `ProvisioningPolicy` contract namespace in integration guide.
-- Clarify auth-attempt consumption timing; expand configuration reference details.
-
-Full changelog: [CHANGELOG.md](https://github.com/CreativeCrafts/laravel-sso/blob/main/CHANGELOG.md)
-
-## [1.0.1](https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.1) - 2026-07-02
+## [1.0.1] - 2026-07-02
 
 Documentation and correctness patch for v1.0.0 integrators.
 
@@ -39,7 +30,7 @@ Documentation and correctness patch for v1.0.0 integrators.
 - Fix throttling config key typo; expand audit env var documentation.
 - Add secondary index notes to database schema reference.
 
-## [1.0.0](https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.0) - 2026-07-01
+## [1.0.0] - 2026-07-01
 
 First stable release.
 
@@ -81,3 +72,7 @@ First stable release.
 - Operator, Deployment, Security, Troubleshooting, Error Catalog guides
 - Upgrade Guide, Auth Attempt Lifecycle, Architecture Audit
 - Maintainer Release Checklist, Contributor Matrix Testing
+
+[1.0.2]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.2
+[1.0.1]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.1
+[1.0.0]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.0
