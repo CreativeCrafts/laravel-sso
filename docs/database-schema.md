@@ -82,6 +82,8 @@ Short-lived OIDC/SAML callback state — not durable login history.
 
 Unique: `(tenant_id, state)`.
 
+Additional indexes: `(tenant_id, expires_at)`, `(tenant_id, consumed_at)`, `(tenant_id, status)`, `(tenant_id, validating_at)`.
+
 See [Auth Attempt Lifecycle](auth-attempt-lifecycle.md).
 
 ## `sso_external_identities`
@@ -102,6 +104,8 @@ Maps IdP subjects to local authenticatable models.
 | `created_at`, `updated_at` | timestamps | |
 
 Unique: `(tenant_id, identity_provider_id, provider_subject)`.
+
+Indexes: `(tenant_id, email)`, `(authenticatable_type, authenticatable_id)`.
 
 ## `sso_audit_logs`
 

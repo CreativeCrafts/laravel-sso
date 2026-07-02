@@ -144,7 +144,7 @@ Independent rate limiters (enabled by default):
 | Limiter | Config key | Default max / decay |
 |---------|------------|---------------------|
 | `sso.redirect` | `throttling.redirect` | 60 / 1 min |
-| `sso.callback` | `sso.callback` | 30 / 1 min |
+| `sso.callback` | `throttling.callback` | 30 / 1 min |
 | `sso.acs` | `throttling.acs` | 30 / 1 min |
 | `sso.metadata` | `throttling.metadata` | 60 / 1 min |
 
@@ -157,9 +157,9 @@ Each bucket supports `enabled`, `max_attempts`, and `decay_minutes` with `SSO_TH
 | `audit.extended_context` / `SSO_AUDIT_EXTENDED_CONTEXT` | `false` | Store additional redacted callback summaries. |
 | `audit.subject_hash_algo` / `SSO_AUDIT_SUBJECT_HASH_ALGO` | `sha256` | Subject hash algorithm. |
 | `audit.subject_hint_length` / `SSO_AUDIT_SUBJECT_HINT_LENGTH` | `12` | Truncated subject hint length. |
-| `audit.string_value_max_length` | `80` | Max string length in audit context. |
-| `audit.max_claim_keys` | `20` | Max claim keys in summaries. |
-| `audit.max_array_items` | `20` | Max array items in extended context. |
+| `audit.string_value_max_length` / `SSO_AUDIT_STRING_VALUE_MAX_LENGTH` | `80` | Max string length in audit context. |
+| `audit.max_claim_keys` / `SSO_AUDIT_MAX_CLAIM_KEYS` | `20` | Max claim keys in summaries. |
+| `audit.max_array_items` / `SSO_AUDIT_MAX_ARRAY_ITEMS` | `20` | Max array items in extended context. |
 
 ## Security (IdP URL policy)
 

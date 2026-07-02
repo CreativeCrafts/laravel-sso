@@ -11,6 +11,17 @@ final class TenantRouteKey
         return strlen($key) === 26 && preg_match('/^[0-9A-HJKMNP-TV-Z]{26}$/i', $key) === 1;
     }
 
+    public static function normalizeForStorage(string $ulid): string
+    {
+        $ulid = trim($ulid);
+
+        if ($ulid === '') {
+            return $ulid;
+        }
+
+        return self::looksLikeUlid($ulid) ? strtoupper($ulid) : $ulid;
+    }
+
     public static function isNumericId(string $key): bool
     {
         return $key !== '' && ctype_digit($key);

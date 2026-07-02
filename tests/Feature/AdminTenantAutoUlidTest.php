@@ -22,3 +22,13 @@ it('auto generates tenant ulid when omitted from admin api payload', function ()
         ->assertOk()
         ->assertJsonFragment(['name' => 'Generated ULID Tenant']);
 });
+
+it('normalizes caller supplied tenant ulids to uppercase on create', function (): void {
+    $response = $this->postJson('/admin/sso/tenants', [
+        'ulid' => '01arz3ndektsv4rrffq69g5fav',
+        'name' => 'Normalized ULID Tenant',
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonFragment(['ulid' => '01ARZ3NDEKTSV4RRFFQ69G5FAV']);
+});

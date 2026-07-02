@@ -71,3 +71,15 @@ it('throws when updating or deleting a missing tenant', function () {
     expect(fn () => $repository->deleteByUlid($missing))
         ->toThrow(TenantNotFound::class);
 });
+
+it('finds tenants by ulid using case insensitive matching', function () {
+    $repository = new EloquentTenantRepository();
+
+    $tenant = Tenant::query()->create([
+        'ulid' => '01arz3ndektsv4rrffq69g5fav',
+        'name' => 'Lowercase ULID Tenant',
+    ]);
+
+    expect($repository->findByUlid('01ARZ3NDEKTSV4RRFFQ69G5FAV')?->id)->toBe($tenant->id)
+        ->and($repository->findByUlid('01arz3ndektsv4rrffq69g5fav')?->id)->toBe($tenant->id);
+});

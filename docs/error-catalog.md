@@ -9,14 +9,15 @@ Public SSO routes return **empty bodies** with explicit status codes via `SsoExc
 | HTTP | Meaning | Common exceptions |
 |------|---------|-------------------|
 | 400 | Malformed callback request | `CallbackStateMissing`, `MissingExternalSubject`, `OidcCallbackCodeMissing`, `SamlAcsRequestInvalid`, `SamlResponseStatusInvalid`, `SamlSignatureMissing`, `UnsupportedSsoProtocol` |
-| 401 | Protocol validation failed | `OidcIdTokenValidationFailed`, `OidcTokenExchangeFailed`, `SamlAssertionConditionsInvalid`, `SamlClaimsNormalizationFailed`, `SamlSignatureInvalid` |
+| 401 | Protocol validation failed | `OidcCallbackErrorResponse`, `OidcIdTokenValidationFailed`, `OidcTokenExchangeFailed`, `SamlAssertionConditionsInvalid`, `SamlClaimsNormalizationFailed`, `SamlSignatureInvalid` |
 | 403 | Policy or verification denial | `ProvisioningDenied`, `IdentityLinkDenied`, `EmailVerificationRequired` |
 | 404 | Missing or disabled resource | `AuthAttemptNotFound`, `TenantNotFound`, `TenantScopedRecordNotFound`, `SsoResourceDisabled` |
 | 409 | Replay, binding conflict, or concurrent validation | `AuthAttemptAlreadyConsumed`, `AuthAttemptValidationInProgress`, `InvalidAuthAttemptBinding`, `SamlAssertionReplayDetected`, `UserEmailAlreadyExists` |
 | 410 | Expired auth attempt | `AuthAttemptExpired` |
+| 500 | Guard misconfiguration | `GuardSelectionFailed` |
 | 502 | IdP or outbound resolution failure | `OidcAuthorizationRequestFailed`, `OidcDiscoveryFailed`, `OidcEndpointResolutionFailed`, `OidcJwksFetchFailed`, `OidcUserinfoFailed`, `SamlAuthorizationRequestFailed`, `SamlMetadataParseFailed`, `TenantResolutionFailed`, `UnsafeIdpUrl` |
 
-Exceptions not listed above (for example `GuardSelectionFailed`) fall through to Laravel's default handler and may return **500** in production or a debug page when `APP_DEBUG=true`.
+Other unlisted exceptions fall through to Laravel's default handler and may return **500** in production or a debug page when `APP_DEBUG=true`.
 
 ## Audit log events
 
@@ -35,7 +36,7 @@ Extended context is opt-in via `SSO_AUDIT_EXTENDED_CONTEXT=true`. See [Configura
 
 ### Tenant cannot be resolved
 
-**Exception:** `TenantResolutionFailed`, `TenantNotFound`
+**Exceptions:** `TenantResolutionFailed` → **502** on public SSO routes; missing route tenant parameter → **404** (`abort(404)` in controllers)
 
 Likely causes:
 
@@ -401,7 +402,7 @@ Operator action: configure IdP to emit `sub` / NameID.
 
 ### Guard selection failed
 
-**Exception:** `GuardSelectionFailed`
+**Exception:** `GuardSelectionFailed` → **500** on public SSO routes
 
 Likely causes:
 

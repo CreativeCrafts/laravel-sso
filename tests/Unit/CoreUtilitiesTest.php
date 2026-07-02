@@ -32,3 +32,10 @@ it('identifies ulid and numeric route keys', function (): void {
         ->and(TenantRouteKey::isNumericId('42'))->toBeTrue()
         ->and(TenantRouteKey::isNumericId('abc'))->toBeFalse();
 });
+
+it('normalizes ulid route keys for storage', function (): void {
+    expect(TenantRouteKey::normalizeForStorage('01arz3ndektsv4rrffq69g5fav'))
+        ->toBe('01ARZ3NDEKTSV4RRFFQ69G5FAV')
+        ->and(TenantRouteKey::normalizeForStorage(' tenant_ca '))->toBe('tenant_ca')
+        ->and(TenantRouteKey::normalizeForStorage(''))->toBe('');
+});

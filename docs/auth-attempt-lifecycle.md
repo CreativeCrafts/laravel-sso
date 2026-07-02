@@ -22,9 +22,10 @@ Runtime callback handling uses the first three states as the active lifecycle.
 Use this sequence for protocol callbacks:
 
 1. `AuthAttemptService::reserveForValidation()`
-2. perform provider-specific validation
-3. `AuthAttemptService::markConsumed()` on success
-4. `AuthAttemptService::markValidationFailed()` on retryable validation failure
+2. perform provider-specific validation in `HandleCallbackService`
+3. `ProvisionAndLinkService` creates or links the local user (`HandlesCallbackResponse`)
+4. `AuthAttemptService::markConsumed()` after provisioning/linking completes (or on terminal provisioning failure)
+5. `AuthAttemptService::markValidationFailed()` on retryable validation failure
 
 This preserves replay protection without consuming an attempt before protocol validation succeeds.
 
