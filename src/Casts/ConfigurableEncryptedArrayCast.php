@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
 use JsonException;
 use RuntimeException;
+use Throwable;
 
 /**
  * @implements CastsAttributes<array<string, mixed>|null, mixed>
@@ -37,7 +38,7 @@ final class ConfigurableEncryptedArrayCast implements CastsAttributes
             $decrypted = Crypt::decryptString($value);
 
             return $this->decodeJson($decrypted);
-        } catch (\Throwable) {
+        } catch (Throwable) {
             return $this->decodeJson($value);
         }
     }

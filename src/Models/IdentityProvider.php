@@ -36,15 +36,6 @@ final class IdentityProvider extends Model
       'config' => 'encrypted:array',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(static function (IdentityProvider $identityProvider): void {
-            if ($identityProvider->ulid === null || $identityProvider->ulid === '') {
-                $identityProvider->ulid = (string) Str::ulid();
-            }
-        });
-    }
-
     /**
      * @return BelongsTo<Tenant, $this>
      */
@@ -83,5 +74,14 @@ final class IdentityProvider extends Model
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class, 'identity_provider_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(static function (IdentityProvider $identityProvider): void {
+            if ($identityProvider->ulid === null || $identityProvider->ulid === '') {
+                $identityProvider->ulid = (string) Str::ulid();
+            }
+        });
     }
 }

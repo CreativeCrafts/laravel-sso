@@ -7,6 +7,7 @@ namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
 use Illuminate\Foundation\Http\FormRequest;
+use Closure;
 
 final class ConnectionUpdateRequest extends FormRequest
 {
@@ -25,7 +26,7 @@ final class ConnectionUpdateRequest extends FormRequest
         return [
           'identity_provider_id' => [
               'sometimes',
-              static function (string $attribute, mixed $value, \Closure $fail): void {
+              static function (string $attribute, mixed $value, Closure $fail): void {
                   if (is_int($value) && $value >= 1) {
                       return;
                   }

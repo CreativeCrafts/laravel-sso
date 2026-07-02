@@ -38,15 +38,6 @@ final class Connection extends Model
       'settings' => 'array',
     ];
 
-    protected static function booted(): void
-    {
-        static::creating(static function (Connection $connection): void {
-            if ($connection->ulid === null || $connection->ulid === '') {
-                $connection->ulid = (string) Str::ulid();
-            }
-        });
-    }
-
     /**
      * @return BelongsTo<Tenant, $this>
      */
@@ -77,5 +68,14 @@ final class Connection extends Model
     public function auditLogs(): HasMany
     {
         return $this->hasMany(AuditLog::class, 'connection_id');
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(static function (Connection $connection): void {
+            if ($connection->ulid === null || $connection->ulid === '') {
+                $connection->ulid = (string) Str::ulid();
+            }
+        });
     }
 }

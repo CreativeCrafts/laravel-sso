@@ -69,7 +69,7 @@ it('denies linking when required groups are absent in example policy', function 
     ]);
 
     $policy = new GroupRequiredIdentityLinkPolicy();
-    $user = new class () implements \Illuminate\Contracts\Auth\Authenticatable {
+    $user = new class () implements Illuminate\Contracts\Auth\Authenticatable {
         public function getAuthIdentifierName(): string
         {
             return 'id';
@@ -134,7 +134,7 @@ it('throws when saml authn request signing is enabled without keys', function ()
     config()->set('sso.saml.sp.signing_private_key_pem', null);
     config()->set('sso.saml.sp.signing_certificate_pem', null);
 
-    $driver = app(\CreativeCrafts\LaravelSso\Drivers\SamlDriver::class);
+    $driver = app(CreativeCrafts\LaravelSso\Drivers\SamlDriver::class);
 
     $reflection = new ReflectionClass($driver);
     $method = $reflection->getMethod('maybeSignAuthnRequest');
