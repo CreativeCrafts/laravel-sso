@@ -4,14 +4,30 @@ This catalog maps package failures to likely causes, HTTP responses (on public S
 
 ## HTTP status quick reference (public SSO routes)
 
+Public SSO routes return **empty bodies** with explicit status codes via `SsoExceptionRenderer`. Admin API routes use Laravel's default exception handling unless noted.
+
 | HTTP | Meaning | Common exceptions |
 |------|---------|-------------------|
+| 400 | Malformed callback request | `CallbackStateMissing`, `MissingExternalSubject`, `OidcCallbackCodeMissing`, `SamlAcsRequestInvalid`, `SamlResponseStatusInvalid`, `SamlSignatureMissing`, `UnsupportedSsoProtocol` |
+| 401 | Protocol validation failed | `OidcIdTokenValidationFailed`, `OidcTokenExchangeFailed`, `SamlAssertionConditionsInvalid`, `SamlClaimsNormalizationFailed`, `SamlSignatureInvalid` |
 | 403 | Policy or verification denial | `ProvisioningDenied`, `IdentityLinkDenied`, `EmailVerificationRequired` |
-| 404 | Missing or disabled resource | `TenantScopedRecordNotFound`, `SsoResourceDisabled` |
-| 409 | Replay or concurrent validation | `AuthAttemptAlreadyConsumed`, `AuthAttemptValidationInProgress`, `SamlAssertionReplayDetected` |
+| 404 | Missing or disabled resource | `AuthAttemptNotFound`, `TenantNotFound`, `TenantScopedRecordNotFound`, `SsoResourceDisabled` |
+| 409 | Replay, binding conflict, or concurrent validation | `AuthAttemptAlreadyConsumed`, `AuthAttemptValidationInProgress`, `InvalidAuthAttemptBinding`, `SamlAssertionReplayDetected`, `UserEmailAlreadyExists` |
 | 410 | Expired auth attempt | `AuthAttemptExpired` |
+| 502 | IdP or outbound resolution failure | `OidcAuthorizationRequestFailed`, `OidcDiscoveryFailed`, `OidcEndpointResolutionFailed`, `OidcJwksFetchFailed`, `OidcUserinfoFailed`, `SamlAuthorizationRequestFailed`, `SamlMetadataParseFailed`, `TenantResolutionFailed`, `UnsafeIdpUrl` |
 
-Other exceptions may return Laravel's default error pages or 500 responses depending on `APP_DEBUG`.
+Exceptions not listed above (for example `GuardSelectionFailed`) fall through to Laravel's default handler and may return **500** in production or a debug page when `APP_DEBUG=true`.
+
+## Audit log events
+
+Callback handling writes redacted audit records to `sso_audit_logs`:
+
+| Event | Level | When |
+|-------|-------|------|
+| `sso.callback.succeeded` | `info` | Protocol validation succeeded (before provisioning/linking) |
+| `sso.callback.failed` | `warning` | Protocol validation failed |
+
+Extended context is opt-in via `SSO_AUDIT_EXTENDED_CONTEXT=true`. See [Configuration Reference](configuration-reference.md#audit-logging).
 
 ---
 

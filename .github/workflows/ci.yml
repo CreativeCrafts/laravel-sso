@@ -133,4 +133,4 @@ jobs:
             --update-with-all-dependencies
 
       - name: Coverage (Pest)
-        run: vendor/bin/pest --coverage --coverage-text
+        run: vendor/bin/pest --coverage --coverage-text --min=90

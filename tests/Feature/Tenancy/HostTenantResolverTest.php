@@ -82,3 +82,68 @@ it('throws misconfigured exception when subdomain mode has no base domain', func
     expect(fn () => $resolver->resolve($request))
         ->toThrow(TenantResolutionFailed::class);
 });
+
+it('returns null when host tenancy is disabled or host is empty', function (): void {
+    $resolver = new HostTenantResolver(
+        enabled: false,
+        mode: 'host',
+        baseDomain: null,
+        tenants: new EloquentTenantRepository(),
+    );
+
+    $request = Request::create('http://tenant.example.test/sso/start', 'GET');
+
+    expect($resolver->resolve($request))->toBeNull();
+});
+
+it('throws when host tenancy mode is invalid', function (): void {
+    $resolver = new HostTenantResolver(
+        enabled: true,
+        mode: 'invalid',
+        baseDomain: null,
+        tenants: new EloquentTenantRepository(),
+    );
+
+    $request = Request::create('http://tenant.example.test/sso/start', 'GET');
+
+    expect(fn () => $resolver->resolve($request))->toThrow(TenantResolutionFailed::class);
+});
+
+it('ignores subdomain hosts that do not match the configured base domain', function (): void {
+    Tenant::query()->create([
+        'ulid' => (string) Str::ulid(),
+        'name' => 'SubTenant',
+        'metadata' => ['subdomain' => 'acme'],
+    ]);
+
+    $resolver = new HostTenantResolver(
+        enabled: true,
+        mode: 'subdomain',
+        baseDomain: 'example.test',
+        tenants: new EloquentTenantRepository(),
+    );
+
+    expect($resolver->resolve(Request::create('http://example.test/sso/start', 'GET')))->toBeNull()
+        ->and($resolver->resolve(Request::create('http://other.test/sso/start', 'GET')))->toBeNull()
+        ->and($resolver->resolve(Request::create('http://nested.acme.example.test/sso/start', 'GET')))->toBeNull();
+});
+
+it('resolves subdomain tenants by ulid when metadata subdomain is absent', function (): void {
+    $ulid = (string) Str::ulid();
+    $tenant = Tenant::query()->create([
+        'ulid' => $ulid,
+        'name' => 'Ulid Subdomain Tenant',
+        'metadata' => [],
+    ]);
+
+    $resolver = new HostTenantResolver(
+        enabled: true,
+        mode: 'subdomain',
+        baseDomain: 'example.test',
+        tenants: new EloquentTenantRepository(),
+    );
+
+    $request = Request::create('http://' . $ulid . '.example.test/sso/start', 'GET');
+
+    expect($resolver->resolve($request)?->id)->toBe($tenant->id);
+});

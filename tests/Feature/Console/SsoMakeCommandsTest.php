@@ -28,3 +28,27 @@ it('creates tenant, idp, and connection via commands', function (): void {
     $connection = Connection::query()->where('tenant_id', $tenant->id)->first();
     expect($connection)->not->toBeNull();
 });
+
+it('fails maker commands for invalid input', function (): void {
+    $this->artisan('sso:make-tenant Example --ulid=not-a-ulid')
+        ->assertExitCode(1);
+
+    $tenant = $this->createTenant();
+
+    $this->artisan('sso:make-idp "" "Name" --protocol=oidc')
+        ->assertExitCode(1);
+
+    $this->artisan('sso:make-idp ' . $tenant->ulid . ' "Name" --protocol=invalid')
+        ->assertExitCode(1);
+
+    $this->artisan('sso:make-idp missing-ulid "Name" --protocol=oidc')
+        ->assertExitCode(1);
+
+    $idp = $this->createIdentityProvider($tenant);
+
+    $this->artisan('sso:make-connection "" ' . $idp->id . ' Conn')
+        ->assertExitCode(1);
+
+    $this->artisan('sso:make-connection ' . $tenant->ulid . ' 99999 Conn')
+        ->assertExitCode(1);
+});

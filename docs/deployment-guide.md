@@ -5,7 +5,7 @@ Use this guide when deploying `creativecrafts/laravel-sso` to staging or product
 ## Pre-deploy checklist
 
 1. Confirm the target application runs a supported PHP and Laravel version (see `composer.json`).
-2. Run `php artisan sso:install --run-migrations` (or publish `laravel-sso-migrations` and migrate).
+2. Run `php artisan sso:install --run-migrations` (or publish `sso-migrations` and migrate).
 3. Confirm `APP_KEY` is stable across all app instances.
 4. Confirm queue, cache, and session backends are production-ready.
 5. Confirm public SSO routes are reachable over HTTPS.
@@ -41,7 +41,7 @@ php artisan sso:install --run-migrations
 Or manually:
 
 ```bash
-php artisan vendor:publish --tag=laravel-sso-migrations
+php artisan vendor:publish --tag=sso-migrations
 php artisan migrate --force
 ```
 

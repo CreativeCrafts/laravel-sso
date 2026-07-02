@@ -57,17 +57,25 @@ Returns JSON scaffold metadata (`SSO Admin UI scaffold`).
 
 ### Create tenant
 
+`ulid` is optional. When omitted or blank, the API auto-generates a ULID (same behavior as `sso:make-tenant`).
+
 ```http
 POST /admin/sso/tenants
 Content-Type: application/json
 
 {
   "name": "Acme Corp",
-  "metadata": {}
+  "metadata": {
+    "domain": "acme.example.com",
+    "domains": ["acme.example.com", "www.acme.example.com"],
+    "subdomain": "acme"
+  }
 }
 ```
 
 Response includes `ulid` — use this in public SSO URLs and nested routes.
+
+Host/subdomain tenancy reads `metadata.domain`, `metadata.domains`, and `metadata.subdomain`. See [Integration Guide](integration-guide.md#host--subdomain-tenancy).
 
 ## Identity providers (tenant-scoped)
 

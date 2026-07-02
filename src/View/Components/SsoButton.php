@@ -4,14 +4,11 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\View\Components;
 
-use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
 final class SsoButton extends Component
 {
-    private const string VIEW = 'laravel-sso::components.sso-button';
-
     public function __construct(
         public string $tenant,
         public string $connection,
@@ -21,14 +18,22 @@ final class SsoButton extends Component
     }
 
     /**
-     * @throws BindingResolutionException
+     * @return array<string, mixed>
      */
+    public function data(): array
+    {
+        return [
+            'tenant' => $this->tenant,
+            'connection' => $this->connection,
+            'label' => $this->label,
+            'redirectTo' => $this->redirectTo,
+            'href' => $this->url(),
+        ];
+    }
+
     public function render(): View
     {
-        /** @var View $view */
-        $view = app('view')->make(self::VIEW);
-
-        return $view;
+        return $this->view('laravel-sso::components.sso-button');
     }
 
     public function url(): string

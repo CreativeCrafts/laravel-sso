@@ -27,5 +27,8 @@
         <include>
             <directory suffix=".php">./src</directory>
         </include>
+        <exclude>
+            <directory>./src/Contracts</directory>
+        </exclude>
     </source>
 </phpunit>

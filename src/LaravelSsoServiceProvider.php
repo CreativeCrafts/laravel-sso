@@ -82,6 +82,7 @@ use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlMetadataParser;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Protocol\Saml\SamlAuthnRequestSigner;
+use CreativeCrafts\LaravelSso\View\Components\SsoButton;
 use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
 use CreativeCrafts\LaravelSso\Repositories\EloquentAuditLogRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentAuthAttemptRepository;
@@ -109,7 +110,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             ->hasMigration('create_sso_tables')
             ->hasMigration('add_lifecycle_fields_to_sso_auth_attempts')
             ->hasMigration('add_public_ulids_to_sso_resources')
-            ->hasViews()
+            ->hasViews('laravel-sso')
             ->hasCommands([
                 SsoInstallCommand::class,
                 SsoDoctorCommand::class,
@@ -247,7 +248,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             $this->loadRoutesFrom(__DIR__ . '/../routes/admin.php');
         }
 
-        Blade::component('laravel-sso::components.sso-button', 'sso-button');
+        Blade::component(SsoButton::class, 'sso-button');
 
         $this->registerSsoExceptionRendering();
     }
