@@ -4,7 +4,36 @@ All notable changes to `creativecrafts/laravel-sso` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-07-01
+## [v1.0.0](https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.0/compare/v1.0.0...v1.0.0) - 2026-07-02
+
+First stable release of `creativecrafts/laravel-sso`.
+
+### Highlights
+
+- Multi-tenant OIDC and SAML 2.0 SSO for Laravel 12/13 (PHP 8.3–8.5)
+- Deny-by-default provisioning and identity linking with pluggable policies
+- Auth-attempt lifecycle with deferred consumption, replay protection, and row-lock validation
+- JSON admin API, optional UI scaffold, and comprehensive integrator documentation
+- Security hardening: PKCE, JWKS validation, SAML signature/conditions checks, SSRF-aware IdP URL policy, encrypted secrets
+- **90% test coverage** enforced in CI
+
+### Install
+
+```bash
+composer require creativecrafts/laravel-sso
+php artisan sso:install --run-migrations
+
+```
+### Documentation
+
+- [Getting Started](https://github.com/CreativeCrafts/laravel-sso/blob/main/docs/getting-started.md)
+- [Configuration Reference](https://github.com/CreativeCrafts/laravel-sso/blob/main/docs/configuration-reference.md)
+- [Integration Guide](https://github.com/CreativeCrafts/laravel-sso/blob/main/docs/integration-guide.md)
+- [Security Guide](https://github.com/CreativeCrafts/laravel-sso/blob/main/docs/security.md)
+
+Full changelog: [CHANGELOG.md](https://github.com/CreativeCrafts/laravel-sso/blob/main/CHANGELOG.md)
+
+## [1.0.0](https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.0) - 2026-07-01
 
 First stable release.
 
@@ -46,5 +75,3 @@ First stable release.
 - Operator, Deployment, Security, Troubleshooting, Error Catalog guides
 - Upgrade Guide, Auth Attempt Lifecycle, Architecture Audit
 - Maintainer Release Checklist, Contributor Matrix Testing
-
-[1.0.0]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.0
