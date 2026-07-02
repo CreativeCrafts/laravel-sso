@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 
+use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
+use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Gate;
 
 final class ConnectionUpdateRequest extends FormRequest
 {
+    use AuthorizesSsoAdmin;
+
     public function authorize(): bool
     {
-        $ability = config('sso.ui.gate', 'manageSso');
-        $ability = is_string($ability) && $ability !== '' ? $ability : 'manageSso';
-
-        return Gate::has($ability) ? Gate::allows($ability) : true;
+        return $this->authorizeSsoAdmin();
     }
 
     /**
@@ -23,7 +23,20 @@ final class ConnectionUpdateRequest extends FormRequest
     public function rules(): array
     {
         return [
-          'identity_provider_id' => ['sometimes', 'integer', 'min:1'],
+          'identity_provider_id' => [
+              'sometimes',
+              static function (string $attribute, mixed $value, \Closure $fail): void {
+                  if (is_int($value) && $value >= 1) {
+                      return;
+                  }
+
+                  if (is_string($value) && $value !== '' && (TenantRouteKey::looksLikeUlid($value) || ctype_digit($value))) {
+                      return;
+                  }
+
+                  $fail('The identity provider reference must be a numeric id or ULID.');
+              },
+          ],
           'name' => ['sometimes', 'string', 'max:255'],
           'enabled' => ['sometimes', 'boolean'],
           'guard' => ['sometimes', 'nullable', 'string', 'max:255'],

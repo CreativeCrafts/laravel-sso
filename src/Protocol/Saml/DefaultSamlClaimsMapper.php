@@ -65,18 +65,27 @@ final class DefaultSamlClaimsMapper implements SamlClaimsMapper
 
         $groups = $this->groups($attributes, $groupKeys);
 
+        $normalized = [
+            'sub' => $subject,
+            'email' => $email,
+            'name' => $displayName,
+            'groups' => $groups,
+        ];
+
+        if ((bool) config('sso.saml.persist_raw_saml', false)) {
+            $normalized['raw_saml'] = [
+                'name_id' => $subject,
+                'attributes' => $attributes,
+            ];
+        }
+
         return new Claims(
             subject: $subject,
             email: $email,
             displayName: $displayName,
             emailVerified: null,
             groups: $groups,
-            normalized: [
-            'raw_saml' => [
-              'name_id' => $subject,
-              'attributes' => $attributes,
-            ],
-          ],
+            normalized: $normalized,
         );
     }
 

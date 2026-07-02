@@ -35,7 +35,7 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         $signature = $this->base64UrlDecodeBinary($parts[2]);
 
         $alg = $header['alg'] ?? null;
-        if ($alg !== 'RS256') {
+        if (!is_string($alg) || $alg === '' || !$this->isAllowedAlgorithm($alg)) {
             throw OidcIdTokenValidationFailed::make('unsupported alg');
         }
 
@@ -119,6 +119,21 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
         }
 
         return false;
+    }
+
+    private function isAllowedAlgorithm(string $algorithm): bool
+    {
+        $allowed = config('sso.oidc.id_token.allowed_algorithms', ['RS256']);
+
+        if (!is_array($allowed) || $allowed === []) {
+            return $algorithm === 'RS256';
+        }
+
+        if (!in_array($algorithm, $allowed, true)) {
+            return false;
+        }
+
+        return $algorithm === 'RS256';
     }
 
     /**

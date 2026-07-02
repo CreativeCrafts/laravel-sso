@@ -4,17 +4,16 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 
+use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Gate;
 
 final class TenantUpdateRequest extends FormRequest
 {
+    use AuthorizesSsoAdmin;
+
     public function authorize(): bool
     {
-        $ability = config('sso.ui.gate', 'manageSso');
-        $ability = is_string($ability) && $ability !== '' ? $ability : 'manageSso';
-
-        return Gate::has($ability) ? Gate::allows($ability) : true;
+        return $this->authorizeSsoAdmin();
     }
 
     /**

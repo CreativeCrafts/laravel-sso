@@ -73,13 +73,13 @@ it('logs in using the guard configured on the connection', function () {
         subject: 'sub-guard',
         email: 'user@example.test',
         displayName: 'User One',
-        emailVerified: null,
+        emailVerified: true,
         groups: [],
         normalized: [
             'sub' => 'sub-guard',
             'email' => 'user@example.test',
             'name' => 'User One',
-            'email_verified' => null,
+            'email_verified' => true,
             'groups' => [],
         ],
     );

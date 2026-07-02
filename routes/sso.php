@@ -26,5 +26,6 @@ Route::group([
       ->name('saml.acs');
 
     Route::get('{tenant}/{connection}/metadata', SamlSpMetadataController::class)
+      ->middleware('throttle:sso.metadata')
       ->name('saml.metadata');
 });

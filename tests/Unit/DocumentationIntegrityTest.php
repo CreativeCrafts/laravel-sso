@@ -3,15 +3,45 @@
 declare(strict_types=1);
 
 it('keeps README local documentation links valid', function (): void {
-    $root = dirname(__DIR__, 2);
-    $readmePath = $root . '/README.md';
+    assertMarkdownLinksValid(packageRoot() . '/README.md');
+});
 
-    expect(is_file($readmePath))->toBeTrue();
+it('keeps docs directory local links valid', function (): void {
+    $docsRoot = packageRoot() . '/docs';
 
-    $readme = file_get_contents($readmePath);
-    expect($readme)->toBeString();
+    expect(is_dir($docsRoot))->toBeTrue();
 
-    preg_match_all('/\[[^\]]+\]\(([^)]+)\)/', (string) $readme, $matches);
+    $files = glob($docsRoot . '/*.md');
+
+    expect($files)->not->toBeEmpty();
+
+    foreach ($files as $file) {
+        assertMarkdownLinksValid($file);
+    }
+});
+
+it('keeps SECURITY.md local links valid', function (): void {
+    assertMarkdownLinksValid(packageRoot() . '/SECURITY.md');
+});
+
+function packageRoot(): string
+{
+    return dirname(__DIR__, 2);
+}
+
+/**
+ * @param non-empty-string $markdownPath
+ */
+function assertMarkdownLinksValid(string $markdownPath): void
+{
+    $root = packageRoot();
+
+    expect(is_file($markdownPath))->toBeTrue();
+
+    $markdown = file_get_contents($markdownPath);
+    expect($markdown)->toBeString();
+
+    preg_match_all('/\[[^\]]+\]\(([^)]+)\)/', (string) $markdown, $matches);
 
     $githubVirtualTargets = [
         '../../contributors',
@@ -19,6 +49,7 @@ it('keeps README local documentation links valid', function (): void {
     ];
 
     $missing = [];
+    $markdownDir = dirname($markdownPath);
 
     foreach ($matches[1] as $target) {
         $target = trim((string) $target);
@@ -34,13 +65,20 @@ it('keeps README local documentation links valid', function (): void {
             continue;
         }
 
-        $candidatePath = $root . '/' . $path;
+        if (str_starts_with($path, '/')) {
+            $candidatePath = $path;
+        } elseif (str_starts_with($path, '../') || str_starts_with($path, './')) {
+            $candidatePath = $markdownDir . '/' . $path;
+        } else {
+            $candidatePath = $markdownDir . '/' . $path;
+        }
+
         $absolutePath = realpath($candidatePath);
 
         if ($absolutePath === false || !str_starts_with($absolutePath, $root . DIRECTORY_SEPARATOR) || !file_exists($absolutePath)) {
-            $missing[] = $target;
+            $missing[] = $target . ' (in ' . basename($markdownPath) . ')';
         }
     }
 
     expect($missing)->toBe([]);
-});
+}

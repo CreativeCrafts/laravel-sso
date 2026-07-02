@@ -13,15 +13,18 @@ use CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
+use CreativeCrafts\LaravelSso\Core\Dto\Claims;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
 use CreativeCrafts\LaravelSso\Events\Dto\CallbackEventSummary;
 use CreativeCrafts\LaravelSso\Events\IdentityLinked;
 use CreativeCrafts\LaravelSso\Events\LoginCompleted;
 use CreativeCrafts\LaravelSso\Events\UserProvisioned;
+use CreativeCrafts\LaravelSso\Exceptions\EmailVerificationRequired;
 use CreativeCrafts\LaravelSso\Exceptions\IdentityLinkDenied;
 use CreativeCrafts\LaravelSso\Exceptions\MissingExternalSubject;
 use CreativeCrafts\LaravelSso\Exceptions\ProvisioningDenied;
 use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
+use CreativeCrafts\LaravelSso\Exceptions\UserEmailAlreadyExists;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\ExternalIdentity;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
@@ -89,8 +92,20 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         $guard = $this->guards->selectGuard($tenant, $connection);
 
         /** @var Authenticatable $authenticatedUser */
-        $authenticatedUser = DB::transaction(function () use ($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $persistedClaims, $guard, $eventCallback): Authenticatable {
-            return $this->resolveAndAuthenticate($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $persistedClaims, $guard, $eventCallback);
+        $authenticatedUser = DB::transaction(function () use ($tenant, $connection, $identityProvider, $subject, $email, $displayName, $claims, $persistedClaims, $guard, $eventCallback, $callback): Authenticatable {
+            return $this->resolveAndAuthenticate(
+                tenant: $tenant,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                canonicalClaims: $callback->canonicalClaims,
+                subject: $subject,
+                email: $email,
+                displayName: $displayName,
+                claims: $claims,
+                persistedClaims: $persistedClaims,
+                guard: $guard,
+                eventCallback: $eventCallback,
+            );
         });
 
         return $authenticatedUser;
@@ -104,6 +119,7 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         Tenant $tenant,
         Connection $connection,
         IdentityProvider $identityProvider,
+        Claims $canonicalClaims,
         string $subject,
         ?string $email,
         ?string $displayName,
@@ -156,48 +172,20 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         }
 
         if ($user instanceof Authenticatable) {
-            if ($this->identityLinkPolicy->allows($tenant, $connection, $identityProvider, $user, $claims) === false) {
-                throw IdentityLinkDenied::make();
-            }
-
-            $externalIdentity = $this->externalIdentities->upsertForUser(
+            return $this->linkAndAuthenticateExistingUser(
                 tenant: $tenant,
+                connection: $connection,
                 identityProvider: $identityProvider,
+                canonicalClaims: $canonicalClaims,
                 subject: $subject,
                 email: $email,
                 displayName: $displayName,
-                claims: $persistedClaims,
+                claims: $claims,
+                persistedClaims: $persistedClaims,
+                guard: $guard,
+                eventCallback: $eventCallback,
                 user: $user,
             );
-
-            if ($externalIdentity->wasRecentlyCreated) {
-                $this->events->dispatch(
-                    new IdentityLinked(
-                        tenant: $tenant,
-                        connection: $connection,
-                        identityProvider: $identityProvider,
-                        externalIdentity: $externalIdentity,
-                        user: $user,
-                        guard: $guard,
-                        callback: $eventCallback,
-                    ),
-                );
-            }
-
-            $this->auth->guard($guard)->login($user);
-
-            $this->events->dispatch(
-                new LoginCompleted(
-                    tenant: $tenant,
-                    connection: $connection,
-                    identityProvider: $identityProvider,
-                    user: $user,
-                    guard: $guard,
-                    callback: $eventCallback,
-                ),
-            );
-
-            return $user;
         }
 
         if ($this->provisioningPolicy->allows($tenant, $connection, $identityProvider, $claims) === false) {
@@ -208,7 +196,34 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
             throw new RuntimeException('Cannot provision without an email claim.');
         }
 
-        $user = $this->provisioner->provision($guard, $email, $displayName, $claims);
+        if (!$this->emailVerifiedForProvisioning($identityProvider, $canonicalClaims)) {
+            throw EmailVerificationRequired::forProvisioning();
+        }
+
+        try {
+            $user = $this->provisioner->provision($guard, $email, $displayName, $claims);
+        } catch (UserEmailAlreadyExists) {
+            $user = $this->users->findByEmail($guard, $email);
+
+            if (!$user instanceof Authenticatable) {
+                throw new RuntimeException('Cannot resolve existing user after email conflict.');
+            }
+
+            return $this->linkAndAuthenticateExistingUser(
+                tenant: $tenant,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                canonicalClaims: $canonicalClaims,
+                subject: $subject,
+                email: $email,
+                displayName: $displayName,
+                claims: $claims,
+                persistedClaims: $persistedClaims,
+                guard: $guard,
+                eventCallback: $eventCallback,
+                user: $user,
+            );
+        }
 
         $this->events->dispatch(
             new UserProvisioned(
@@ -262,12 +277,84 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
     }
 
     /**
+     * @param array<string, mixed> $claims
+     * @param array<string, mixed> $persistedClaims
+     */
+    private function linkAndAuthenticateExistingUser(
+        Tenant $tenant,
+        Connection $connection,
+        IdentityProvider $identityProvider,
+        Claims $canonicalClaims,
+        string $subject,
+        ?string $email,
+        ?string $displayName,
+        array $claims,
+        array $persistedClaims,
+        string $guard,
+        CallbackEventSummary $eventCallback,
+        Authenticatable $user,
+    ): Authenticatable {
+        if (!$this->emailVerifiedForLinking($identityProvider, $canonicalClaims)) {
+            throw EmailVerificationRequired::forLinking();
+        }
+
+        if ($this->identityLinkPolicy->allows($tenant, $connection, $identityProvider, $user, $claims) === false) {
+            throw IdentityLinkDenied::make();
+        }
+
+        $externalIdentity = $this->externalIdentities->upsertForUser(
+            tenant: $tenant,
+            identityProvider: $identityProvider,
+            subject: $subject,
+            email: $email,
+            displayName: $displayName,
+            claims: $persistedClaims,
+            user: $user,
+        );
+
+        if ($externalIdentity->wasRecentlyCreated) {
+            $this->events->dispatch(
+                new IdentityLinked(
+                    tenant: $tenant,
+                    connection: $connection,
+                    identityProvider: $identityProvider,
+                    externalIdentity: $externalIdentity,
+                    user: $user,
+                    guard: $guard,
+                    callback: $eventCallback,
+                ),
+            );
+        }
+
+        $this->auth->guard($guard)->login($user);
+
+        $this->events->dispatch(
+            new LoginCompleted(
+                tenant: $tenant,
+                connection: $connection,
+                identityProvider: $identityProvider,
+                user: $user,
+                guard: $guard,
+                callback: $eventCallback,
+            ),
+        );
+
+        return $user;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function persistedClaims(DriverCallbackResult $callback): array
     {
         if ((bool) config('sso.claims.persist_raw', false)) {
-            return $callback->claims;
+            $claims = $callback->claims;
+
+            if (!(bool) config('sso.saml.persist_raw_saml', false)) {
+                unset($claims['raw_saml']);
+            }
+
+            return $claims;
         }
 
         $claims = [
@@ -304,5 +391,40 @@ final readonly class ProvisionAndLinkService implements ProvisionAndLink
         }
 
         return $default;
+    }
+
+    private function emailVerifiedForLinking(IdentityProvider $identityProvider, Claims $canonicalClaims): bool
+    {
+        if (!(bool) config('sso.linking.require_email_verified', true)) {
+            return true;
+        }
+
+        return $this->emailClaimIsVerified($identityProvider, $canonicalClaims, 'linking');
+    }
+
+    private function emailVerifiedForProvisioning(IdentityProvider $identityProvider, Claims $canonicalClaims): bool
+    {
+        if (!(bool) config('sso.provisioning.require_email_verified', true)) {
+            return true;
+        }
+
+        return $this->emailClaimIsVerified($identityProvider, $canonicalClaims, 'provisioning');
+    }
+
+    private function emailClaimIsVerified(IdentityProvider $identityProvider, Claims $canonicalClaims, string $context): bool
+    {
+        if ($canonicalClaims->emailVerified === true) {
+            return true;
+        }
+
+        if ($identityProvider->protocol !== 'saml') {
+            return false;
+        }
+
+        $configKey = $context === 'linking'
+            ? 'sso.linking.trust_saml_email_attributes'
+            : 'sso.provisioning.trust_saml_email_attributes';
+
+        return (bool) config($configKey, false);
     }
 }

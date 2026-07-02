@@ -22,6 +22,8 @@ interface ConnectionRepository
 
     public function findForTenant(Tenant $tenant, int $id): ?Connection;
 
+    public function findForTenantByRouteKey(Tenant $tenant, string $routeKey): ?Connection;
+
     /**
      * @param array<string, mixed> $attributes
      */

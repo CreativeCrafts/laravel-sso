@@ -5,9 +5,9 @@ Use this checklist before tagging a release of `creativecrafts/laravel-sso`.
 ## Scope
 
 - Confirm merged changes match the intended milestone.
-- Confirm OpenSpec task checkboxes are accurate.
-- Confirm behavior changes are reflected in `docs/upgrade-guide.md`.
-- Confirm README examples still match current configuration and routes.
+- Confirm OpenSpec task checkboxes are accurate (when using OpenSpec — see [CONTRIBUTING](../CONTRIBUTING.md)).
+- Confirm behavior changes are reflected in [Upgrade Guide](upgrade-guide.md) and [CHANGELOG](../CHANGELOG.md).
+- Confirm README and [Getting Started](getting-started.md) examples match current commands, publish tags, and routes.
 - Confirm public contract changes are intentional.
 
 ## Local validation
@@ -23,7 +23,13 @@ vendor/bin/pest
 vendor/bin/pest --coverage --coverage-text
 ```
 
-For local reproduction of a specific dependency set, use `docs/contributor-matrix-testing.md`.
+Or:
+
+```bash
+composer ci
+```
+
+For local reproduction of a specific dependency set, use [Contributor Matrix Testing](contributor-matrix-testing.md).
 
 ## CI matrix
 
@@ -48,23 +54,34 @@ Before release, confirm:
 - audit context remains redacted by default.
 - provisioning and identity linking remain deny-by-default.
 - callback state remains replay-safe.
+- connection/IdP ULIDs are used in public URL generation.
+- external identity claim encryption default remains on.
 - upgrade notes cover migration and rollout requirements.
 
 ## Documentation review
 
-Confirm README-linked docs exist:
+Confirm these files exist and are linked from [README](../README.md):
 
-- `docs/getting-started.md`
-- `docs/operator-guide.md`
-- `docs/error-catalog.md`
-- `docs/deployment-guide.md`
-- `docs/troubleshooting.md`
-- `docs/upgrade-guide.md`
-- `docs/maintainer-release-checklist.md`
-- `docs/architecture-audit.md`
-- `docs/contributor-matrix-testing.md`
+- [Getting Started](getting-started.md)
+- [Configuration Reference](configuration-reference.md)
+- [Integration Guide](integration-guide.md)
+- [Admin API](admin-api.md)
+- [Operator Guide](operator-guide.md)
+- [Deployment Guide](deployment-guide.md)
+- [Security Guide](security.md)
+- [Troubleshooting Guide](troubleshooting.md)
+- [Error Catalog](error-catalog.md)
+- [Upgrade Guide](upgrade-guide.md)
+- [Auth Attempt Lifecycle](auth-attempt-lifecycle.md)
+- [Architecture Audit](architecture-audit.md)
+- [Contributor Matrix Testing](contributor-matrix-testing.md)
+- [Maintainer Release Checklist](maintainer-release-checklist.md)
 
-Run the README link integrity test before release.
+Run documentation link integrity tests:
+
+```bash
+vendor/bin/pest tests/Unit/DocumentationIntegrityTest.php
+```
 
 ## Release notes
 
@@ -81,7 +98,8 @@ Include:
 ## After publishing
 
 1. Confirm Packagist update.
-2. Confirm installation in a clean Laravel app.
-3. Run a minimal OIDC smoke test.
-4. Run a minimal SAML smoke test when feasible.
-5. Monitor issues and CI for regressions.
+2. Confirm installation in a clean Laravel app (`composer require`, `sso:install --run-migrations`).
+3. Run `php artisan sso:doctor --strict`.
+4. Run a minimal OIDC smoke test.
+5. Run a minimal SAML smoke test when feasible.
+6. Monitor issues and CI for regressions.

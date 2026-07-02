@@ -19,24 +19,21 @@ it('prunes old auth attempts and audit logs', function () {
         'name' => 'Acme',
     ]);
 
-    $oldAttempt = AuthAttempt::query()->create([
+    AuthAttempt::query()->create([
         'tenant_id' => $tenant->id,
         'protocol' => 'oidc',
         'state' => 'old-state',
-        'expires_at' => now()->addHour(),
+        'expires_at' => Carbon::now()->subDays(10),
         'context' => [],
     ]);
 
-    $recentAttempt = AuthAttempt::query()->create([
+    AuthAttempt::query()->create([
         'tenant_id' => $tenant->id,
         'protocol' => 'oidc',
         'state' => 'new-state',
-        'expires_at' => now()->addHour(),
+        'expires_at' => Carbon::now()->addHour(),
         'context' => [],
     ]);
-
-    $oldAttempt->forceFill(['created_at' => Carbon::now()->subDays(10)])->save();
-    $recentAttempt->forceFill(['created_at' => Carbon::now()->subDay()])->save();
 
     $oldAudit = AuditLog::query()->create([
         'tenant_id' => $tenant->id,

@@ -74,13 +74,13 @@ it('dispatches provisioning lifecycle events in order for a newly provisioned us
         subject: 'sub-123',
         email: 'user@example.test',
         displayName: 'User One',
-        emailVerified: null,
+        emailVerified: true,
         groups: [],
         normalized: [
             'sub' => 'sub-123',
             'email' => 'user@example.test',
             'name' => 'User One',
-            'email_verified' => null,
+            'email_verified' => true,
             'groups' => [],
         ],
     );
@@ -141,13 +141,13 @@ it('dispatches link and login events without provisioning when linking an existi
         subject: 'sub-456',
         email: 'user@example.test',
         displayName: 'Existing',
-        emailVerified: null,
+        emailVerified: true,
         groups: [],
         normalized: [
             'sub' => 'sub-456',
             'email' => 'user@example.test',
             'name' => 'Existing',
-            'email_verified' => null,
+            'email_verified' => true,
             'groups' => [],
         ],
     );

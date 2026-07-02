@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Repositories;
 
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
+use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\Tenant;
@@ -61,6 +62,21 @@ final class EloquentConnectionRepository implements ConnectionRepository
           ->where('tenant_id', $tenant->id)
           ->whereKey($id)
           ->first();
+    }
+
+    public function findForTenantByRouteKey(Tenant $tenant, string $routeKey): ?Connection
+    {
+        $query = Connection::query()->where('tenant_id', $tenant->id);
+
+        if (TenantRouteKey::looksLikeUlid($routeKey)) {
+            return $query->where('ulid', $routeKey)->first();
+        }
+
+        if (TenantRouteKey::isNumericId($routeKey)) {
+            return $query->whereKey((int) $routeKey)->first();
+        }
+
+        return null;
     }
 
     public function deleteForTenant(Tenant $tenant, int $id): void

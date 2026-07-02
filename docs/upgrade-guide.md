@@ -2,6 +2,12 @@
 
 This guide covers release-sensitive upgrade steps for `creativecrafts/laravel-sso`.
 
+## Related documentation
+
+- [Configuration Reference](configuration-reference.md)
+- [Integration Guide](integration-guide.md)
+- [Security Guide](security.md)
+
 ## Auth-attempt lifecycle fields
 
 The package now uses explicit auth-attempt lifecycle metadata during callback validation:
@@ -46,6 +52,35 @@ php artisan sso:prune --attempts-days=0
 ```
 
 Use a wider retention value if your deployment policy requires retaining recent attempts. Auth attempts are short-lived protocol state and should not be treated as durable login history.
+
+## Public resource ULIDs
+
+Connections and identity providers now expose public `ulid` values for use in SSO and admin route paths.
+
+Existing installations should publish and run migrations:
+
+```bash
+php artisan vendor:publish --tag="sso-migrations"
+php artisan migrate
+```
+
+After migration, prefer connection ULIDs in published SSO URLs:
+
+```text
+/sso/{tenant_ulid}/{connection_ulid}/redirect
+```
+
+Numeric connection IDs remain supported for backward compatibility.
+
+## Encrypted external identity claims
+
+External identity `claims` are encrypted at rest by default (`SSO_CLAIMS_ENCRYPT_PERSISTED=true`).
+
+Existing plaintext claim rows are read transparently and re-encrypted on the next update. To bulk re-encrypt, touch external identity records in a maintenance task or temporarily disable encryption only during migration troubleshooting:
+
+```env
+SSO_CLAIMS_ENCRYPT_PERSISTED=false
+```
 
 ## Callback validation lifecycle
 

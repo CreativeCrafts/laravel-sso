@@ -30,7 +30,7 @@ final class SsoPruneCommand extends Command
 
         if ($attemptsDays > 0) {
             $removedAttempts = $this->chunkedDelete(
-                AuthAttempt::query()->where('created_at', '<', $now->copy()->subDays($attemptsDays)),
+                AuthAttempt::query()->where('expires_at', '<', $now->copy()->subDays($attemptsDays)),
             );
         }
 

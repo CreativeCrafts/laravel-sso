@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Core;
 
 use CreativeCrafts\LaravelSso\Contracts\Core\UserProvisioner;
+use CreativeCrafts\LaravelSso\Exceptions\UserEmailAlreadyExists;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use RuntimeException;
 
 final class DefaultUserProvisioner implements UserProvisioner
@@ -43,7 +45,15 @@ final class DefaultUserProvisioner implements UserProvisioner
             $user->setAttribute($nameColumn, $displayName);
         }
 
-        $user->save();
+        try {
+            $user->save();
+        } catch (QueryException $exception) {
+            if (!$this->isUniqueConstraintViolation($exception)) {
+                throw $exception;
+            }
+
+            throw UserEmailAlreadyExists::forEmail($email);
+        }
 
         if (!$user instanceof Authenticatable) {
             throw new RuntimeException('Provisioned model is not authenticatable.');
@@ -78,5 +88,20 @@ final class DefaultUserProvisioner implements UserProvisioner
         }
 
         return $model;
+    }
+
+    private function isUniqueConstraintViolation(QueryException $exception): bool
+    {
+        $code = (string) $exception->getCode();
+
+        if ($code === '23000') {
+            return true;
+        }
+
+        $message = strtolower($exception->getMessage());
+
+        return str_contains($message, 'unique constraint failed')
+            || str_contains($message, 'duplicate key value')
+            || str_contains($message, 'unique violation');
     }
 }

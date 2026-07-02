@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelSso\Protocol\Saml;
 
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Exceptions\SamlMetadataParseFailed;
+use CreativeCrafts\LaravelSso\Exceptions\SamlResponseStatusInvalid;
 use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureInvalid;
 use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureMissing;
 use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
@@ -35,6 +36,7 @@ final class DefaultSamlSignatureValidator implements SamlSignatureValidator
         $xpath->registerNamespace('ds', self::NS_DS);
 
         $this->assertStrictDocumentShape($xpath);
+        $this->assertSuccessfulResponseStatus($xpath);
         $this->registerAllIdAttributes($doc);
 
         $response = $this->firstElement($xpath, '/samlp:Response');
@@ -100,6 +102,21 @@ final class DefaultSamlSignatureValidator implements SamlSignatureValidator
             return $doc;
         } catch (Throwable $e) {
             throw SamlMetadataParseFailed::invalidXml($e);
+        }
+    }
+
+    private function assertSuccessfulResponseStatus(DOMXPath $xpath): void
+    {
+        $statusCode = $this->firstElement($xpath, '/samlp:Response/samlp:Status/samlp:StatusCode');
+
+        if (!$statusCode instanceof DOMElement) {
+            throw SamlResponseStatusInvalid::make();
+        }
+
+        $value = trim($statusCode->getAttribute('Value'));
+
+        if ($value === '' || !str_ends_with($value, ':Success')) {
+            throw SamlResponseStatusInvalid::make($value !== '' ? $value : null);
         }
     }
 

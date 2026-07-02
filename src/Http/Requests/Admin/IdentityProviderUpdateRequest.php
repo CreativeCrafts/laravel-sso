@@ -4,21 +4,19 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 
+use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\ValidatesIdentityProviderConfig;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Validator;
 
 final class IdentityProviderUpdateRequest extends FormRequest
 {
+    use AuthorizesSsoAdmin;
     use ValidatesIdentityProviderConfig;
 
     public function authorize(): bool
     {
-        $ability = config('sso.ui.gate', 'manageSso');
-        $ability = is_string($ability) && $ability !== '' ? $ability : 'manageSso';
-
-        return Gate::has($ability) ? Gate::allows($ability) : true;
+        return $this->authorizeSsoAdmin();
     }
 
     /**

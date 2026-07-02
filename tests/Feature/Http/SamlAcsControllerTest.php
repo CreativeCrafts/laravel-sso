@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
+use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
 use CreativeCrafts\LaravelSso\Contracts\Core\ProvisionAndLink;
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
+use CreativeCrafts\LaravelSso\Models\Connection;
+use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\AuthAttemptRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\Claims;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
@@ -16,6 +20,60 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\Request;
 
 uses(TestCase::class);
+
+function mockConnectionRepositoryForAcs(Tenant $tenant, string $routeKey, int $connectionId): void
+{
+    app()->instance(
+        ConnectionRepository::class,
+        new class ($tenant, $routeKey, $connectionId) implements ConnectionRepository {
+            public function __construct(
+                private readonly Tenant $tenant,
+                private readonly string $routeKey,
+                private readonly int $connectionId,
+            ) {
+            }
+
+            public function create(Tenant $tenant, array $attributes): Connection
+            {
+                throw new RuntimeException('Not implemented.');
+            }
+
+            public function listForTenant(Tenant $tenant): \Illuminate\Support\Collection
+            {
+                throw new RuntimeException('Not implemented.');
+            }
+
+            public function findForTenant(Tenant $tenant, int $id): ?Connection
+            {
+                throw new RuntimeException('Not implemented.');
+            }
+
+            public function findForTenantByRouteKey(Tenant $tenant, string $routeKey): ?Connection
+            {
+                if ($tenant->id !== $this->tenant->id || $routeKey !== $this->routeKey) {
+                    return null;
+                }
+
+                return new Connection([
+                    'id' => $this->connectionId,
+                    'tenant_id' => $this->tenant->id,
+                    'ulid' => $this->routeKey,
+                    'enabled' => true,
+                ]);
+            }
+
+            public function updateForTenant(Tenant $tenant, int $id, array $attributes): Connection
+            {
+                throw new RuntimeException('Not implemented.');
+            }
+
+            public function deleteForTenant(Tenant $tenant, int $id): void
+            {
+                throw new RuntimeException('Not implemented.');
+            }
+        },
+    );
+}
 
 it('saml acs controller delegates to the core pipeline and redirects safely', function () {
     $tenant = new Tenant([
@@ -50,7 +108,7 @@ it('saml acs controller delegates to the core pipeline and redirects safely', fu
                         subject: 'subject-123',
                         email: 'user@example.test',
                         displayName: 'User Example',
-                        emailVerified: null,
+                        emailVerified: true,
                         groups: [],
                         normalized: ['protocol' => 'saml'],
                     ),
@@ -101,6 +159,56 @@ it('saml acs controller delegates to the core pipeline and redirects safely', fu
         },
     );
 
+    app()->instance(
+        AuthAttemptService::class,
+        new class () implements AuthAttemptService {
+            public function create(
+                Tenant $tenant,
+                string $protocol,
+                ?Connection $connection = null,
+                ?IdentityProvider $identityProvider = null,
+                ?string $redirectTo = null,
+                ?string $codeVerifier = null,
+                bool $withNonce = true,
+                array $context = [],
+                ?string $ip = null,
+                ?string $userAgent = null,
+            ): AuthAttempt {
+                throw new RuntimeException('Not implemented.');
+            }
+
+            public function reserveForValidation(
+                Tenant $tenant,
+                string $state,
+                ?int $expectedConnectionId = null,
+                ?int $expectedIdentityProviderId = null,
+            ): AuthAttempt {
+                throw new RuntimeException('Not implemented.');
+            }
+
+            public function markConsumed(AuthAttempt $attempt): AuthAttempt
+            {
+                return $attempt;
+            }
+
+            public function markValidationFailed(AuthAttempt $attempt): AuthAttempt
+            {
+                return $attempt;
+            }
+
+            public function consumeByState(
+                Tenant $tenant,
+                string $state,
+                ?int $expectedConnectionId = null,
+                ?int $expectedIdentityProviderId = null,
+            ): AuthAttempt {
+                throw new RuntimeException('Not implemented.');
+            }
+        },
+    );
+
+    mockConnectionRepositoryForAcs($tenant, '10', 10);
+
     $response = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
         'connection' => '10',
@@ -146,7 +254,7 @@ it('returns 204 when the core callback result is not authenticated', function ()
                         subject: 'subject-123',
                         email: 'user@example.test',
                         displayName: 'User Example',
-                        emailVerified: null,
+                        emailVerified: true,
                         groups: [],
                         normalized: [],
                     ),
@@ -174,6 +282,8 @@ it('returns 204 when the core callback result is not authenticated', function ()
             }
         },
     );
+
+    mockConnectionRepositoryForAcs($tenant, '11', 11);
 
     $response = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,

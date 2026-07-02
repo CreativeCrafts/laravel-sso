@@ -10,9 +10,11 @@ use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverStartResult;
+use CreativeCrafts\LaravelSso\Core\SafeRedirectValidator;
 use CreativeCrafts\LaravelSso\Events\AuthAttemptCreated;
 use CreativeCrafts\LaravelSso\Events\BeginLoginRedirectGenerated;
 use CreativeCrafts\LaravelSso\Events\BeginLoginRequested;
+use CreativeCrafts\LaravelSso\Exceptions\SsoResourceDisabled;
 use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
@@ -29,6 +31,7 @@ final readonly class BeginLoginService implements BeginLogin
         private AuthAttemptService $attempts,
         private DriverRegistry $drivers,
         private Dispatcher $events,
+        private SafeRedirectValidator $redirectValidator,
     ) {
     }
 
@@ -41,7 +44,7 @@ final readonly class BeginLoginService implements BeginLogin
         }
 
         if ($connection->enabled === false) {
-            throw TenantScopedRecordNotFound::for(Connection::class, $connectionId);
+            throw SsoResourceDisabled::for(Connection::class, $connectionId);
         }
 
         $identityProviderId = $connection->identity_provider_id;
@@ -53,11 +56,13 @@ final readonly class BeginLoginService implements BeginLogin
         }
 
         if ($identityProvider->enabled === false) {
-            throw TenantScopedRecordNotFound::for(IdentityProvider::class, $identityProviderId);
+            throw SsoResourceDisabled::for(IdentityProvider::class, $identityProviderId);
         }
 
         $redirectTo = $request->query('redirect_to');
-        $redirectTo = is_string($redirectTo) && $redirectTo !== '' ? $redirectTo : null;
+        $redirectTo = is_string($redirectTo) && $redirectTo !== ''
+            ? $this->redirectValidator->sanitizeForStorage($redirectTo, $request)
+            : null;
 
         $this->events->dispatch(
             new BeginLoginRequested(

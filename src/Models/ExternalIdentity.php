@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Models;
 
+use CreativeCrafts\LaravelSso\Casts\ConfigurableEncryptedArrayCast;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -35,7 +36,7 @@ final class ExternalIdentity extends Model
     ];
 
     protected $casts = [
-      'claims' => 'array',
+      'claims' => ConfigurableEncryptedArrayCast::class,
     ];
 
     /**

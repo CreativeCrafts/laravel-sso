@@ -61,6 +61,13 @@ final class SamlTestXmlSig
         $issuerEl->nodeValue = $issuer;
         $resp->appendChild($issuerEl);
 
+        $status = $doc->createElementNS('urn:oasis:names:tc:SAML:2.0:protocol', 'samlp:Status');
+        $resp->appendChild($status);
+
+        $statusCode = $doc->createElementNS('urn:oasis:names:tc:SAML:2.0:protocol', 'samlp:StatusCode');
+        $statusCode->setAttribute('Value', 'urn:oasis:names:tc:SAML:2.0:status:Success');
+        $status->appendChild($statusCode);
+
         $assertion = $doc->createElementNS('urn:oasis:names:tc:SAML:2.0:assertion', 'saml:Assertion');
         $assertion->setAttribute('ID', '_assert');
         $assertion->setAttribute('Version', '2.0');

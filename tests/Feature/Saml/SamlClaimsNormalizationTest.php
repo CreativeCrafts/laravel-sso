@@ -37,7 +37,30 @@ it('normalizes saml response xml into canonical claims', function () {
       ->and($claims->email)->toBe('user@example.test')
       ->and($claims->displayName)->toBe('User One')
       ->and($claims->groups)->toBe(['admin', 'dev'])
-      ->and($claims->normalized)->toHaveKey('raw_saml');
+      ->and($claims->normalized)->not->toHaveKey('raw_saml');
+});
+
+it('includes raw saml detail only when explicitly enabled', function () {
+    config()->set('sso.saml.persist_raw_saml', true);
+
+    $xml = <<<XML
+        <?xml version="1.0" encoding="UTF-8"?>
+        <samlp:Response xmlns:samlp="urn:oasis:names:tc:SAML:2.0:protocol"
+                       xmlns:saml="urn:oasis:names:tc:SAML:2.0:assertion"
+                       ID="_response_claims_raw">
+          <saml:Assertion ID="_assertion_claims_raw">
+            <saml:Subject>
+              <saml:NameID>sub-raw</saml:NameID>
+            </saml:Subject>
+          </saml:Assertion>
+        </samlp:Response>
+        XML;
+
+    $claims = app(SamlClaimsNormalizer::class)->normalize(
+        samlClaimsSignedXml($xml, '_assertion_claims_raw'),
+    );
+
+    expect($claims->normalized)->toHaveKey('raw_saml');
 });
 
 it('honors configured attribute mapping keys', function () {

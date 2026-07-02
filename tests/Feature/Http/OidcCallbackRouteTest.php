@@ -53,7 +53,7 @@ it('oidc callback endpoint provisions user and redirects when state is valid', f
 
     $redirectUrl = route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]);
 
     $redirectResp = $this->get($redirectUrl);
@@ -67,7 +67,7 @@ it('oidc callback endpoint provisions user and redirects when state is valid', f
 
     $callbackUrl = route('sso.oidc.callback', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]);
 
     $resp = $this->get($callbackUrl . '?state=' . urlencode((string) $state));
@@ -123,7 +123,7 @@ it('rejects callback redirects to different origins', function () {
 
     $callbackUrl = route('sso.oidc.callback', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]);
 
     $resp = $this->get($callbackUrl . '?state=' . urlencode($attempt->state));

@@ -93,7 +93,6 @@ final readonly class HandleCallbackService implements HandleCallback
             $driver = $this->drivers->get($protocol);
 
             $result = $driver->handleCallback($request, $tenant, $connection, $attempt);
-            $attempt = $this->attempts->markConsumed($attempt);
 
             try {
                 $this->auditSucceeded(

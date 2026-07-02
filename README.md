@@ -8,50 +8,52 @@ Generic OIDC and SAML 2.0 SSO for Laravel, with multi-tenant support, user provi
 
 ## Compatibility
 
-This package currently supports the runtime constraints declared in `composer.json`:
+This package supports the runtime constraints declared in `composer.json`:
 
-- PHP `^8.3`, including PHP 8.3, 8.4, and 8.5
+- PHP `^8.3` (8.3, 8.4, 8.5)
 - Laravel / Illuminate `^12.0|^13.0`
 
-CI runs checks and coverage across PHP 8.3, 8.4, and 8.5 with Laravel 12 and Laravel 13. See `composer.json` for the authoritative runtime constraints.
+CI validates PHP 8.3–8.5 across Laravel 12 and 13. See `composer.json` for authoritative constraints.
 
 ## Documentation
 
-For operator-facing and release-facing guidance, see:
-
-- [Operator Guide](docs/operator-guide.md)
-- [Getting Started](docs/getting-started.md)
-- [Error Catalog](docs/error-catalog.md)
-- [Deployment Guide](docs/deployment-guide.md)
-- [Troubleshooting Guide](docs/troubleshooting.md)
-- [Upgrade Guide](docs/upgrade-guide.md)
-- [Maintainer Release Checklist](docs/maintainer-release-checklist.md)
-- [Architecture Audit](docs/architecture-audit.md)
+| Guide | Description |
+|-------|-------------|
+| [Getting Started](docs/getting-started.md) | Install → first OIDC login |
+| [Configuration Reference](docs/configuration-reference.md) | All config keys, env vars, IdP JSON shapes |
+| [Integration Guide](docs/integration-guide.md) | Policies, events, tenancy, guards, extension |
+| [Admin API](docs/admin-api.md) | JSON admin API + UI scaffold |
+| [Operator Guide](docs/operator-guide.md) | Production operating model |
+| [Deployment Guide](docs/deployment-guide.md) | Staging/production checklist |
+| [Security Guide](docs/security.md) | Hardening and operational security |
+| [Troubleshooting Guide](docs/troubleshooting.md) | Common issues |
+| [Error Catalog](docs/error-catalog.md) | Exceptions and HTTP status mapping |
+| [Upgrade Guide](docs/upgrade-guide.md) | Migration and rollout notes |
+| [Auth Attempt Lifecycle](docs/auth-attempt-lifecycle.md) | Callback state machine |
+| [Architecture Audit](docs/architecture-audit.md) | Design boundaries and limitations |
+| [Maintainer Release Checklist](docs/maintainer-release-checklist.md) | Release gates |
+| [Contributor Matrix Testing](docs/contributor-matrix-testing.md) | Local PHP/Laravel matrix |
 
 ## Installation
 
-Install the package with Composer:
-
-~~~bash
+```bash
 composer require creativecrafts/laravel-sso
-~~~
+php artisan sso:install --run-migrations
+```
 
-Publish and run the migrations:
+`sso:install` publishes config (`laravel-sso-config`), migrations (`laravel-sso-migrations`), and optional UI assets (`sso-ui`).
 
-~~~bash
-php artisan vendor:publish --tag="sso-migrations"
+Manual publish:
+
+```bash
+php artisan vendor:publish --tag=laravel-sso-config
+php artisan vendor:publish --tag=laravel-sso-migrations
 php artisan migrate
-~~~
-
-Publish the configuration:
-
-~~~bash
-php artisan vendor:publish --tag="sso-config"
-~~~
+```
 
 ## Database foundation
 
-This package depends on its schema. The published migration creates the package tables used for:
+Published migrations create:
 
 - tenants
 - identity providers
@@ -60,250 +62,125 @@ This package depends on its schema. The published migration creates the package 
 - external identities
 - audit logs
 
-Do not treat the database layer as optional. The package assumes these tables exist and are current.
+Do not treat the database layer as optional.
 
-## Documentation structure
+## Quick start
 
-This repository separates concise package-facing documentation from operator-facing deployment and incident guidance.
+```bash
+php artisan sso:make-tenant "Acme Corp"
+php artisan sso:make-idp {tenant_ulid} "Acme OIDC" --protocol=oidc
+php artisan sso:make-connection {tenant_ulid} {idp_id} "Acme Connection"
+php artisan sso:doctor --strict
+```
 
-Start here for operations and production rollout:
+Configure IdP credentials (admin API or tinker), then add a login button using **connection ULID**:
 
-- `docs/operator-guide.md`
-- `docs/error-catalog.md`
-- `docs/deployment-guide.md`
-- `docs/troubleshooting.md`
-- `docs/upgrade-guide.md`
-- `docs/maintainer-release-checklist.md`
+```blade
+<x-sso-button tenant="{{ $tenantUlid }}" connection="{{ $connectionUlid }}" />
+```
 
-## Provisioning and identity-linking policies
+Full walkthrough: [Getting Started](docs/getting-started.md).
 
-Provisioning and identity linking are deny-by-default.
+## Public SSO routes
 
-A successful OIDC or SAML callback only creates or links a local user when one of the following is true:
+```text
+GET  /sso/{tenant_ulid}/{connection_ulid}/redirect
+GET  /sso/{tenant_ulid}/{connection_ulid}/callback    (OIDC)
+POST /sso/{tenant_ulid}/{connection_ulid}/acs         (SAML)
+GET  /sso/{tenant_ulid}/{connection_ulid}/metadata    (SAML SP)
+```
 
-1. the host application binds its own `ProvisioningPolicy` or `IdentityLinkPolicy`
-2. package-wide defaults are enabled in `config/sso.php`
-3. the connection explicitly opts in through `sso_connections.settings`
+Optional: `?redirect_to=/dashboard` on the redirect route (validated for safety).
 
-### Package-wide defaults
+Helper: `sso_redirect_url($tenantUlid, $connectionUlid, $redirectTo = null)`.
 
-~~~php
-'provisioning' => [
-    'enabled_by_default' => false,
-],
+## Provisioning and identity linking
 
-'linking' => [
-    'enabled_by_default' => false,
-],
-~~~
+Provisioning and identity linking are **deny-by-default**. A successful callback creates or links a local user only when:
 
-Set either value to `true` only when that behavior is acceptable for your application.
+1. the host binds custom `ProvisioningPolicy` / `IdentityLinkPolicy` implementations, **or**
+2. package-wide defaults are enabled in `config/sso.php`, **or**
+3. the connection opts in via `sso_connections.settings`
 
-### Per-connection overrides
+Connection settings override package defaults:
 
-Connection settings take precedence over package defaults.
-
-~~~php
+```php
 $connection->settings = [
     'allow_provisioning' => true,
     'allow_identity_linking' => true,
 ];
-~~~
+```
 
-This makes it possible to allow automatic provisioning or linking for one identity provider while denying it for another within the same tenant.
+Claim-aware example policies: `GroupRequiredProvisioningPolicy`, `GroupRequiredIdentityLinkPolicy`. See [Integration Guide](docs/integration-guide.md).
 
-## IdP URL security
+## Admin API and UI scaffold
 
-OIDC and SAML identity-provider URLs are trusted only when they are production-safe by default.
+The **JSON admin API** manages tenants, identity providers, and connections. Enable with `SSO_UI_ENABLED=true` and register a `manageSso` gate.
 
-The package rejects IdP URLs that are malformed, use embedded credentials, target localhost/private/reserved IP destinations, or use plain HTTP. This applies to OIDC discovery URLs, OIDC authorization/token/JWKS/userinfo endpoints, SAML SSO URLs, and SAML metadata URLs.
+An optional **Inertia UI scaffold** can be published (`sso-ui` tag); full CRUD screens are host-app responsibility.
 
-For local IdP development only, the defaults can be relaxed explicitly:
+Details: [Admin API](docs/admin-api.md).
 
-~~~php
-'security' => [
-    'allow_insecure_idp_urls' => false,
-    'allow_private_idp_urls' => false,
-],
-~~~
+## Security highlights
 
-Do not enable these overrides in production unless equivalent upstream network controls are in place.
+- IdP URL trust policy (HTTPS, no private hosts by default, DNS-checked outbound calls)
+- OIDC: PKCE S256, nonce, RS256 JWKS validation, encrypted PKCE verifiers
+- SAML: strict XML shapes, signature validation, optional AuthnRequest signing (fail-closed)
+- Auth-attempt row-lock lifecycle with deferred consumption
+- Redacted audit logging; encrypted IdP config and external identity claims by default
+- Independent rate limiters: `sso.redirect`, `sso.callback`, `sso.acs`, `sso.metadata`
+- Safe `redirect_to` validation at storage and callback time
 
-## Callback redirect safety
-
-Post-login `redirect_to` values are constrained to safe local paths or same-origin absolute URLs.
-
-The package rejects protocol-relative redirects such as `//evil.example`, malformed URLs, backslash-containing redirects, control characters, and external origins. Unsafe targets fall back to `/`.
-
-## OIDC hardening
-
-OIDC login uses authorization code flow with PKCE S256 and nonce validation. ID token validation requires RS256 signatures, expected issuer, expected audience, expiry, nonce matching, strict key ID matching, and `azp` when a token has multiple audiences.
-
-The package also validates `nbf` and future `iat` claims when present. You may optionally bound accepted login freshness with `max_age_seconds`; when configured, validation requires `auth_time` and compares elapsed time since user authentication, not token issuance time:
-
-~~~php
-'oidc' => [
-    'id_token' => [
-        'max_age_seconds' => env('SSO_OIDC_ID_TOKEN_MAX_AGE_SECONDS'),
-    ],
-],
-~~~
-
-The transient PKCE `code_verifier` is encrypted at rest in `sso_auth_attempts`.
-
-## SAML hardening
-
-SAML responses are parsed with external entity loading disabled and must pass XML signature validation against configured signing certificates.
-
-The package rejects ambiguous or unsupported SAML shapes, including multiple assertions, nested assertions, encrypted assertions, duplicate `ID` attributes, and missing signatures. Destination, audience, recipient, and `InResponseTo` correlation checks remain required by default.
+Full checklist: [Security Guide](docs/security.md).
 
 ## Claims persistence
 
-External identities persist minimized canonical claims by default rather than raw protocol claims.
+External identities persist minimized canonical claims by default:
 
-~~~php
+```php
 'claims' => [
     'persist_raw' => false,
     'persist_groups' => true,
     'max_group_items' => 100,
+    'encrypt_persisted' => true,
 ],
-~~~
-
-Set `persist_raw` to `true` only when your application explicitly needs raw OIDC/SAML claim snapshots and you have appropriate data-retention controls.
-
-## Audit logging
-
-Audit logging is redacted by default.
-
-Successful callback audits retain only concise metadata such as:
-
-- protocol
-- tenant, connection, and attempt identifiers
-- status and error classification
-- a truncated subject hint plus a one-way subject hash
-- claim keys and bounded protocol flags such as `userinfo_used` or SAML signature booleans
-
-The package does not store raw OIDC tokens, raw SAML assertions, or full claim payloads in `sso_audit_logs.context` by default.
-
-### Extended audit context
-
-Extended audit context is available only as an explicit opt-in for debugging:
-
-~~~php
-'audit' => [
-    'extended_context' => false,
-],
-~~~
-
-When enabled, the package stores additional redacted summaries for canonical claims and driver context. Sensitive values such as access tokens, ID tokens, refresh tokens, private keys, SAML responses, and raw claim bags remain redacted even in extended mode.
+```
 
 ## Auth attempt lifecycle
 
-Callback state handling is replay-safe and uses a two-phase lifecycle.
-
-An auth attempt is reserved for validation before protocol-specific callback validation starts. It is marked consumed only after OIDC or SAML validation succeeds. Failed protocol validation releases the attempt back to pending and records `failed_at`, allowing the caller to retry with a valid callback while still rejecting already consumed attempts.
-
-## Request throttling
-
-Public SSO endpoints are rate limited by default.
-
-The package applies independent throttle buckets to:
-
-- `sso.redirect`
-- `sso.callback`
-- `sso.acs`
-
-Default limits are intentionally conservative:
-
-~~~php
-'throttling' => [
-    'redirect' => [
-        'enabled' => true,
-        'max_attempts' => 60,
-        'decay_minutes' => 1,
-    ],
-    'callback' => [
-        'enabled' => true,
-        'max_attempts' => 30,
-        'decay_minutes' => 1,
-    ],
-    'acs' => [
-        'enabled' => true,
-        'max_attempts' => 30,
-        'decay_minutes' => 1,
-    ],
-],
-~~~
-
-Disable throttling only if you have strong compensating controls upstream.
+Callbacks use reserve → validate → consume (or retryable failure). See [Auth Attempt Lifecycle](docs/auth-attempt-lifecycle.md).
 
 ## Data retention
 
-Run `php artisan sso:prune --attempts-days=7 --audit-days=30` on a schedule (for example, daily) to remove stale `sso_auth_attempts` and `sso_audit_logs` records and keep tables compact.
+Schedule daily pruning:
 
-Before deploying changes that encrypt transient attempt data, prune stale auth attempts so no expired plaintext attempts remain active during the upgrade window.
-
-## Optional Admin UI
-
-The admin UI is optional and disabled by default.
-
-Enable it in your config:
-
-~~~php
-// config/sso.php
-'ui' => [
-    'enabled' => true,
-],
-~~~
-
-The UI routes are protected by your configured middleware and gate ability. Admin FormRequests also honor the configured gate when it is defined, as defense in depth.
-
-## Publish UI assets
-
-~~~bash
-php artisan vendor:publish --tag="sso-ui"
-~~~
+```php
+Schedule::command('sso:prune --attempts-days=7 --audit-days=30')->daily();
+```
 
 ## Testing
 
-Run the full test suite:
-
-~~~bash
+```bash
 composer test
-~~~
-
-Run the release-quality command set locally:
-
-~~~bash
-composer ci
-~~~
-
-For maintainer release workflow and release gates, see `docs/maintainer-release-checklist.md`.
+composer ci    # full quality gate
+```
 
 ## Upgrade guidance
 
-Before adopting milestone changes, review:
-
-- `docs/upgrade-guide.md`
-- `CHANGELOG.md`
+Review [Upgrade Guide](docs/upgrade-guide.md) and [CHANGELOG](CHANGELOG.md) before upgrading.
 
 ## Changelog
 
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
+See [CHANGELOG](CHANGELOG.md).
 
 ## Contributing
 
-Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
+See [CONTRIBUTING](CONTRIBUTING.md).
 
 ## Security Vulnerabilities
 
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
-
-## Credits
-
-- [Godspower Oduose](https://github.com/rockblings)
-- [All Contributors](../../contributors)
+See [SECURITY.md](SECURITY.md) or the GitHub security policy.
 
 ## License
 
-The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+MIT — see [LICENSE.md](LICENSE.md).

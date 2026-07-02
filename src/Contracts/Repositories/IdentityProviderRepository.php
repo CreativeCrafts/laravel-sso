@@ -22,6 +22,8 @@ interface IdentityProviderRepository
 
     public function findForTenant(Tenant $tenant, int $id): ?IdentityProvider;
 
+    public function findForTenantByRouteKey(Tenant $tenant, string $routeKey): ?IdentityProvider;
+
     /**
      * @param array<string, mixed> $attributes
      */

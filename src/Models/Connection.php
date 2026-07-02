@@ -7,9 +7,11 @@ namespace CreativeCrafts\LaravelSso\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
+ * @property string|null $ulid
  * @property int $tenant_id
  * @property int $identity_provider_id
  * @property string $name
@@ -22,6 +24,7 @@ final class Connection extends Model
     protected $table = 'sso_connections';
 
     protected $fillable = [
+      'ulid',
       'tenant_id',
       'identity_provider_id',
       'name',
@@ -34,6 +37,15 @@ final class Connection extends Model
       'enabled' => 'bool',
       'settings' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(static function (Connection $connection): void {
+            if ($connection->ulid === null || $connection->ulid === '') {
+                $connection->ulid = (string) Str::ulid();
+            }
+        });
+    }
 
     /**
      * @return BelongsTo<Tenant, $this>

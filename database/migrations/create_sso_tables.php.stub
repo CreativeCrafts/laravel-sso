@@ -21,6 +21,7 @@ return new class extends Migration
         Schema::create('sso_identity_providers', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('tenant_id')->constrained('sso_tenants')->cascadeOnDelete();
+            $table->ulid('ulid')->unique();
             $table->string('name');
             $table->string('protocol');
             $table->boolean('enabled')->default(true);
@@ -34,6 +35,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained('sso_tenants')->cascadeOnDelete();
             $table->foreignId('identity_provider_id')->constrained('sso_identity_providers')->cascadeOnDelete();
+            $table->ulid('ulid')->unique();
             $table->string('name');
             $table->boolean('enabled')->default(true);
             $table->string('guard')->nullable();

@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelSso\Http\Controllers;
 
 use CreativeCrafts\LaravelSso\Contracts\Core\BeginLogin;
 use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
+use CreativeCrafts\LaravelSso\Core\ConnectionRouteResolver;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -15,6 +16,7 @@ final readonly class SsoRedirectController
     public function __construct(
         private TenantResolver $tenants,
         private BeginLogin $beginLogin,
+        private ConnectionRouteResolver $connectionRoutes,
     ) {
     }
 
@@ -26,7 +28,7 @@ final readonly class SsoRedirectController
             abort(404);
         }
 
-        $connectionId = (int) $connection;
+        $connectionId = $this->connectionRoutes->resolveId($tenantModel, $connection);
 
         $result = $this->beginLogin->handle(
             request: $request,

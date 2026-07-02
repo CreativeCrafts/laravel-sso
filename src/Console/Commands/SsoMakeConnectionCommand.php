@@ -60,7 +60,12 @@ final class SsoMakeConnectionCommand extends Command
             'settings' => [],
         ]);
 
-        $this->components->info("Connection created [id: {$connection->id}] for tenant {$tenant->ulid}");
+        $this->components->info(sprintf(
+            'Connection created [id: %d, ulid: %s] for tenant %s',
+            $connection->id,
+            $connection->ulid,
+            $tenant->ulid,
+        ));
 
         return self::SUCCESS;
     }

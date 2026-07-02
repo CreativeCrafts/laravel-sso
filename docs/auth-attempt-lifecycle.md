@@ -2,6 +2,8 @@
 
 Auth attempts are short-lived protocol state for OIDC and SAML login callbacks.
 
+See also: [Error Catalog](error-catalog.md#auth-attempt-errors), [Integration Guide](integration-guide.md#http-exception-rendering), [Configuration Reference](configuration-reference.md#auth-attempts).
+
 ## States
 
 The public model exposes these status constants:

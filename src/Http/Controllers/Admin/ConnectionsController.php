@@ -7,7 +7,11 @@ namespace CreativeCrafts\LaravelSso\Http\Controllers\Admin;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
+use CreativeCrafts\LaravelSso\Core\ConnectionRouteResolver;
+use CreativeCrafts\LaravelSso\Core\IdentityProviderRouteResolver;
+use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use CreativeCrafts\LaravelSso\Exceptions\TenantNotFound;
+use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\ConnectionStoreRequest;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\ConnectionUpdateRequest;
 use CreativeCrafts\LaravelSso\Models\Connection;
@@ -23,6 +27,8 @@ final readonly class ConnectionsController
         private TenantRepository $tenants,
         private ConnectionRepository $connections,
         private IdentityProviderRepository $identityProviders,
+        private ConnectionRouteResolver $connectionRoutes,
+        private IdentityProviderRouteResolver $identityProviderRoutes,
     ) {
     }
 
@@ -44,22 +50,16 @@ final readonly class ConnectionsController
         /** @var array<string, mixed> $payload */
         $payload = $request->validated();
 
-        // The FormRequest rules guarantee this is an integer, but phpstan sees `mixed`.
-        $idpIdRaw = $payload['identity_provider_id'] ?? null;
-        if (!is_int($idpIdRaw)) {
-            return response()->json([
-              'message' => 'Invalid identity provider id.',
-              'errors' => ['identity_provider_id' => ['The identity_provider_id field must be an integer.']],
-            ], 422);
-        }
+        $identityProviderId = $this->resolveIdentityProviderReference($tenantModel, $payload['identity_provider_id'] ?? null);
 
-        $idp = $this->identityProviders->findForTenant($tenantModel, $idpIdRaw);
-        if (!$idp instanceof IdentityProvider) {
+        if ($identityProviderId === null) {
             return response()->json([
               'message' => 'Identity provider not found within tenant scope.',
               'errors' => ['identity_provider_id' => ['Invalid identity provider for this tenant.']],
             ], 422);
         }
+
+        $payload['identity_provider_id'] = $identityProviderId;
 
         $connection = $this->connections->create($tenantModel, $payload);
 
@@ -68,11 +68,11 @@ final readonly class ConnectionsController
         ], Response::HTTP_CREATED);
     }
 
-    public function show(Request $request, string $tenant, int $connection): JsonResponse
+    public function show(Request $request, string $tenant, string $connection): JsonResponse
     {
         $tenantModel = $this->resolveTenant($tenant);
 
-        $model = $this->connections->findForTenant($tenantModel, $connection);
+        $model = $this->connections->findForTenantByRouteKey($tenantModel, $connection);
 
         if (!$model instanceof Connection) {
             abort(404);
@@ -83,7 +83,7 @@ final readonly class ConnectionsController
         ]);
     }
 
-    public function update(ConnectionUpdateRequest $request, string $tenant, int $connection): JsonResponse
+    public function update(ConnectionUpdateRequest $request, string $tenant, string $connection): JsonResponse
     {
         $tenantModel = $this->resolveTenant($tenant);
 
@@ -91,48 +91,45 @@ final readonly class ConnectionsController
         $payload = $request->validated();
 
         if (array_key_exists('identity_provider_id', $payload)) {
-            $idpIdRaw = $payload['identity_provider_id'] ?? null;
+            $identityProviderId = $this->resolveIdentityProviderReference($tenantModel, $payload['identity_provider_id'] ?? null);
 
-            if (!is_int($idpIdRaw)) {
-                return response()->json([
-                  'message' => 'Invalid identity provider id.',
-                  'errors' => ['identity_provider_id' => ['The identity_provider_id field must be an integer.']],
-                ], 422);
-            }
-
-            $idp = $this->identityProviders->findForTenant($tenantModel, $idpIdRaw);
-            if (!$idp instanceof IdentityProvider) {
+            if ($identityProviderId === null) {
                 return response()->json([
                   'message' => 'Identity provider not found within tenant scope.',
                   'errors' => ['identity_provider_id' => ['Invalid identity provider for this tenant.']],
                 ], 422);
             }
+
+            $payload['identity_provider_id'] = $identityProviderId;
         }
 
-        $existing = $this->connections->findForTenant($tenantModel, $connection);
-
-        if (!$existing instanceof Connection) {
+        try {
+            $model = $this->connections->updateForTenant(
+                $tenantModel,
+                $this->connectionRoutes->resolveId($tenantModel, $connection),
+                $payload,
+            );
+        } catch (TenantScopedRecordNotFound) {
             abort(404);
         }
-
-        $model = $this->connections->updateForTenant($tenantModel, $connection, $payload);
 
         return response()->json([
           'data' => $this->toArray($model),
         ]);
     }
 
-    public function destroy(Request $request, string $tenant, int $connection): JsonResponse
+    public function destroy(Request $request, string $tenant, string $connection): JsonResponse
     {
         $tenantModel = $this->resolveTenant($tenant);
 
-        $existing = $this->connections->findForTenant($tenantModel, $connection);
-
-        if (!$existing instanceof Connection) {
+        try {
+            $this->connections->deleteForTenant(
+                $tenantModel,
+                $this->connectionRoutes->resolveId($tenantModel, $connection),
+            );
+        } catch (TenantScopedRecordNotFound) {
             abort(404);
         }
-
-        $this->connections->deleteForTenant($tenantModel, $connection);
 
         return response()->json([], Response::HTTP_NO_CONTENT);
     }
@@ -147,6 +144,7 @@ final readonly class ConnectionsController
 
         return [
           'id' => (int)$connection->id,
+          'ulid' => (string) $connection->ulid,
           'tenant_id' => (int)$connection->tenant_id,
           'identity_provider_id' => (int)$connection->identity_provider_id,
           'name' => (string)$connection->name,
@@ -163,5 +161,30 @@ final readonly class ConnectionsController
         } catch (TenantNotFound) {
             abort(404);
         }
+    }
+
+    private function resolveIdentityProviderReference(Tenant $tenant, mixed $reference): ?int
+    {
+        if (is_int($reference)) {
+            $idp = $this->identityProviders->findForTenant($tenant, $reference);
+
+            return $idp instanceof IdentityProvider ? (int) $idp->id : null;
+        }
+
+        if (is_string($reference) && $reference !== '') {
+            if (TenantRouteKey::isNumericId($reference)) {
+                $idp = $this->identityProviders->findForTenant($tenant, (int) $reference);
+
+                return $idp instanceof IdentityProvider ? (int) $idp->id : null;
+            }
+
+            try {
+                return $this->identityProviderRoutes->resolveId($tenant, $reference);
+            } catch (TenantScopedRecordNotFound) {
+                return null;
+            }
+        }
+
+        return null;
     }
 }

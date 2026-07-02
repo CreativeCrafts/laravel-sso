@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Repositories;
 
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
+use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
@@ -61,6 +62,21 @@ final class EloquentIdentityProviderRepository implements IdentityProviderReposi
           ->where('tenant_id', $tenant->id)
           ->whereKey($id)
           ->first();
+    }
+
+    public function findForTenantByRouteKey(Tenant $tenant, string $routeKey): ?IdentityProvider
+    {
+        $query = IdentityProvider::query()->where('tenant_id', $tenant->id);
+
+        if (TenantRouteKey::looksLikeUlid($routeKey)) {
+            return $query->where('ulid', $routeKey)->first();
+        }
+
+        if (TenantRouteKey::isNumericId($routeKey)) {
+            return $query->whereKey((int) $routeKey)->first();
+        }
+
+        return null;
     }
 
     public function deleteForTenant(Tenant $tenant, int $id): void
