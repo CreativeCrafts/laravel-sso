@@ -6,11 +6,14 @@ namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 
 use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
+use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\ResolvesTenantRouteKey;
+use CreativeCrafts\LaravelSso\Http\Requests\Admin\Rules\UniqueTenantUlid;
 use Illuminate\Foundation\Http\FormRequest;
 
 final class TenantUpdateRequest extends FormRequest
 {
     use AuthorizesSsoAdmin;
+    use ResolvesTenantRouteKey;
 
     public function authorize(): bool
     {
@@ -22,10 +25,10 @@ final class TenantUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        $tenantUlid = $this->route('tenant');
+        $tenant = $this->resolveRouteTenant();
 
         return [
-          'ulid' => ['sometimes', 'string', 'max:64', 'unique:sso_tenants,ulid,' . (is_string($tenantUlid) ? $tenantUlid : 'NULL') . ',ulid'],
+          'ulid' => ['sometimes', 'string', 'max:64', new UniqueTenantUlid($tenant?->id)],
           'name' => ['sometimes', 'nullable', 'string', 'max:255'],
           'metadata' => ['sometimes', 'nullable', 'array'],
         ];
@@ -33,6 +36,12 @@ final class TenantUpdateRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $normalizedRouteUlid = $this->normalizedRouteTenantUlid();
+
+        if ($normalizedRouteUlid !== null) {
+            $this->route()?->setParameter('tenant', $normalizedRouteUlid);
+        }
+
         $ulid = $this->input('ulid');
 
         if (is_string($ulid) && trim($ulid) !== '') {

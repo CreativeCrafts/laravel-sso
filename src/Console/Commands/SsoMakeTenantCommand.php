@@ -7,6 +7,7 @@ namespace CreativeCrafts\LaravelSso\Console\Commands;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Console\Command;
 use Illuminate\Support\Str;
+use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 
 final class SsoMakeTenantCommand extends Command
 {
@@ -26,7 +27,7 @@ final class SsoMakeTenantCommand extends Command
 
         $tenant = Tenant::query()->create([
             'name' => $name,
-            'ulid' => $ulid,
+            'ulid' => TenantRouteKey::normalizeForStorage($ulid),
             'metadata' => [],
         ]);
 
