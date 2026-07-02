@@ -221,7 +221,7 @@ it('fails the full SAML callback flow when the response signature is invalid for
         'RelayState' => (string) $relayState,
     ]);
 
-    $callbackResponse->assertStatus(500);
+    $callbackResponse->assertStatus(401);
 
     expect(auth('web')->check())->toBeFalse();
 

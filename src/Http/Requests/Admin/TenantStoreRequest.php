@@ -6,6 +6,7 @@ namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Str;
 
 final class TenantStoreRequest extends FormRequest
 {
@@ -26,5 +27,14 @@ final class TenantStoreRequest extends FormRequest
           'name' => ['nullable', 'string', 'max:255'],
           'metadata' => ['nullable', 'array'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $ulid = $this->input('ulid');
+
+        if (!is_string($ulid) || trim($ulid) === '') {
+            $this->merge(['ulid' => (string) Str::ulid()]);
+        }
     }
 }

@@ -29,3 +29,9 @@ it('appends redirect_to query parameter when provided', function (): void {
         ->toContain('/sso/')
         ->toContain('redirect_to=' . rawurlencode('/dashboard'));
 });
+
+it('returns an empty string when public sso routes are disabled', function (): void {
+    config(['sso.routes.enabled' => false]);
+
+    expect(sso_redirect_url('01JTESTULID000000000000000', '01JCONN'))->toBe('');
+});

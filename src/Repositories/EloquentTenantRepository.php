@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace CreativeCrafts\LaravelSso\Repositories;
 
 use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
+use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use CreativeCrafts\LaravelSso\Exceptions\TenantNotFound;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Support\Collection;
@@ -28,6 +29,12 @@ final class EloquentTenantRepository implements TenantRepository
 
         if ($ulid === '') {
             return null;
+        }
+
+        if (TenantRouteKey::looksLikeUlid($ulid)) {
+            return Tenant::query()
+                ->where('ulid', strtoupper($ulid))
+                ->first();
         }
 
         return Tenant::query()

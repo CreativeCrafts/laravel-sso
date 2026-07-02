@@ -52,6 +52,12 @@ consumed_at = timestamp
 
 Consumed attempts must reject replayed callbacks even when `failed_at` was previously set by a retryable failure.
 
+## Protocol success vs account lifecycle
+
+After OIDC/SAML validation succeeds, `HandlesCallbackResponse` runs provisioning/linking. The auth attempt is marked **consumed** whether provisioning succeeds or throws (for example `ProvisioningDenied`). Users must start a **new** login to retry; the IdP callback URL cannot be reused.
+
+See [Integration Guide](integration-guide.md#auth-attempt-consumption-after-protocol-success).
+
 ## `consumeByState()`
 
 `consumeByState()` remains available as a replay-safe atomic helper. It reserves and consumes in one operation.

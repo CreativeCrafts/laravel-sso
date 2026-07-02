@@ -129,11 +129,7 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
             return $algorithm === 'RS256';
         }
 
-        if (!in_array($algorithm, $allowed, true)) {
-            return false;
-        }
-
-        return $algorithm === 'RS256';
+        return in_array($algorithm, $allowed, true);
     }
 
     /**

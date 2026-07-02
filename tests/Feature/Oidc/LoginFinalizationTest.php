@@ -224,7 +224,7 @@ it('fails the full OIDC callback flow when the id token nonce does not match the
         'connection' => $connection->ulid,
     ]) . '?state=' . urlencode((string) $state) . '&code=' . urlencode('code-456'));
 
-    $callbackResponse->assertStatus(500);
+    $callbackResponse->assertStatus(401);
 
     expect(auth('web')->check())->toBeFalse();
 

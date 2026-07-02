@@ -7,7 +7,7 @@ This document describes `config/sso.php`, environment variables, public routes, 
 ```bash
 php artisan sso:install
 # or
-php artisan vendor:publish --tag=laravel-sso-config
+php artisan vendor:publish --tag=sso-config
 ```
 
 ## Package enablement
@@ -42,8 +42,14 @@ Optional query parameter on `redirect`:
 Helper:
 
 ```php
-sso_redirect_url(string $tenantUlid, int|string $connectionKey): string
+sso_redirect_url(
+    string $tenantUlid,
+    int|string $connectionKey,
+    ?string $redirectTo = null,
+): string
 ```
+
+When `$redirectTo` is provided, it is appended as the `redirect_to` query parameter (validated for safety at redirect and callback time).
 
 ## Admin API
 
@@ -183,7 +189,7 @@ Each bucket supports `enabled`, `max_attempts`, and `decay_minutes` with `SSO_TH
 | `oidc.id_token.clock_skew_seconds` / `SSO_OIDC_CLOCK_SKEW_SECONDS` | JWT clock skew tolerance. |
 | `oidc.id_token.max_age_seconds` / `SSO_OIDC_ID_TOKEN_MAX_AGE_SECONDS` | Optional max login age (uses `auth_time`). |
 | `oidc.id_token.jwks_cache_ttl_seconds` / `SSO_OIDC_JWKS_CACHE_TTL` | JWKS cache TTL. |
-| `oidc.id_token.allowed_algorithms` / `SSO_OIDC_ALLOWED_ALGORITHMS` | Default `RS256`. |
+| `oidc.id_token.allowed_algorithms` / `SSO_OIDC_ALLOWED_ALGORITHMS` | Default `RS256`. Only **RS256** is validated today; other values are rejected at runtime. |
 
 ## SAML settings
 

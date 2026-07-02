@@ -97,7 +97,27 @@ SSO_TENANCY_HOST_MODE=subdomain
 SSO_TENANCY_BASE_DOMAIN=example.com
 ```
 
-Matches tenant metadata (`sso_tenants.metadata`) against the request host or `{tenant}.example.com`.
+Matches tenant metadata (`sso_tenants.metadata`) against the request host or `{subdomain}.{base_domain}`.
+
+#### Tenant metadata keys
+
+| Key | Type | Used when | Description |
+|-----|------|-----------|-------------|
+| `domain` | string | `host` mode | Primary hostname (e.g. `acme.example.com`) |
+| `domains` | string[] | `host` mode | Additional hostnames that resolve to the tenant |
+| `subdomain` | string | `subdomain` mode | Subdomain label (e.g. `acme` for `acme.example.com`) |
+
+In `subdomain` mode, the resolver also accepts the subdomain segment as a tenant ULID when no `metadata.subdomain` match exists.
+
+Example:
+
+```json
+{
+  "domain": "acme.example.com",
+  "domains": ["www.acme.example.com"],
+  "subdomain": "acme"
+}
+```
 
 ### Default tenant fallback
 
@@ -189,16 +209,57 @@ Host applications may use Eloquent models directly (`Tenant`, `Connection`, `Ide
 
 All tenant-scoped repository methods enforce `tenant_id` boundaries.
 
+## Extension contracts
+
+Bind these contracts in a service provider to customize behavior without forking drivers:
+
+| Contract | Default implementation | Purpose |
+|----------|---------------------|---------|
+| `UrlTrustPolicy` | `DefaultUrlTrustPolicy` | Validate redirect targets and outbound IdP URLs |
+| `IdpOutboundUrlPolicy` | `DefaultIdpOutboundUrlPolicy` | SSRF-aware DNS checks for IdP HTTP calls |
+| `AuditContextSanitizer` | `AuditContextSanitizer` | Redact audit log context |
+| `ProvisioningPolicy` | `DefaultProvisioningPolicy` | Allow or deny JIT user creation |
+| `IdentityLinkPolicy` | `DefaultIdentityLinkPolicy` | Allow or deny linking to existing users |
+| `UserProvisioner` | `DefaultUserProvisioner` | Create local users during provisioning |
+| `UserLocator` | `DefaultUserLocator` | Find users for identity linking |
+| `TenantResolver` | Composite of route/header/host resolvers | Resolve tenant from the request |
+
+Example:
+
+```php
+$this->app->bind(
+    \CreativeCrafts\LaravelSso\Contracts\Core\ProvisioningPolicy::class,
+    \App\Sso\GroupAwareProvisioningPolicy::class,
+);
+```
+
+## Auth attempt consumption after protocol success
+
+Protocol validation and account lifecycle are separate phases:
+
+1. `HandleCallbackService` validates the OIDC/SAML callback and leaves the auth attempt **pending** (or releases a validation lock on failure).
+2. `ProvisionAndLinkService` creates or links the local user and logs the user in.
+3. `HandlesCallbackResponse` calls `markConsumed()` **after provisioning/linking succeeds**.
+
+If provisioning or linking throws (for example `ProvisioningDenied`, `IdentityLinkDenied`, or `EmailVerificationRequired`), the auth attempt is still **consumed**. The user cannot retry the same IdP callback; they must start a new login from the redirect URL.
+
+This prevents replay of a protocol-valid callback while denying account changes. Plan UX accordingly (redirect to an error page and offer a fresh login link).
+
+See [Auth Attempt Lifecycle](auth-attempt-lifecycle.md).
+
 ## HTTP exception rendering
 
 SSO route exceptions map to empty-body HTTP responses via `SsoExceptionRenderer`:
 
 | Exception | Status |
 |-----------|--------|
-| `AuthAttemptAlreadyConsumed`, `AuthAttemptValidationInProgress`, `SamlAssertionReplayDetected` | 409 Conflict |
+| `AuthAttemptAlreadyConsumed`, `AuthAttemptValidationInProgress`, `InvalidAuthAttemptBinding`, `SamlAssertionReplayDetected`, `UserEmailAlreadyExists` | 409 Conflict |
 | `AuthAttemptExpired` | 410 Gone |
-| `ProvisioningDenied`, `IdentityLinkDenied`, `EmailVerificationRequired` | 403 Forbidden |
-| `SsoResourceDisabled`, `TenantScopedRecordNotFound` | 404 Not Found |
+| `AuthAttemptNotFound`, `TenantNotFound`, `TenantScopedRecordNotFound`, `SsoResourceDisabled` | 404 Not Found |
+| `IdentityLinkDenied`, `ProvisioningDenied`, `EmailVerificationRequired` | 403 Forbidden |
+| `CallbackStateMissing`, `MissingExternalSubject`, `OidcCallbackCodeMissing`, `SamlAcsRequestInvalid`, `SamlResponseStatusInvalid`, `SamlSignatureMissing`, `UnsupportedSsoProtocol` | 400 Bad Request |
+| `OidcIdTokenValidationFailed`, `OidcTokenExchangeFailed`, `SamlAssertionConditionsInvalid`, `SamlClaimsNormalizationFailed`, `SamlSignatureInvalid` | 401 Unauthorized |
+| `OidcAuthorizationRequestFailed`, `OidcDiscoveryFailed`, `OidcEndpointResolutionFailed`, `OidcJwksFetchFailed`, `OidcUserinfoFailed`, `SamlAuthorizationRequestFailed`, `SamlMetadataParseFailed`, `TenantResolutionFailed`, `UnsafeIdpUrl` | 502 Bad Gateway |
 
 Other exceptions fall through to Laravel's default handler.
 

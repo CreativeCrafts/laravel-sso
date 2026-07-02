@@ -30,6 +30,7 @@ CI validates PHP 8.3–8.5 across Laravel 12 and 13. See `composer.json` for aut
 | [Error Catalog](docs/error-catalog.md) | Exceptions and HTTP status mapping |
 | [Upgrade Guide](docs/upgrade-guide.md) | Migration and rollout notes |
 | [Auth Attempt Lifecycle](docs/auth-attempt-lifecycle.md) | Callback state machine |
+| [Database Schema](docs/database-schema.md) | Tables, columns, indexes, relationships |
 | [Architecture Audit](docs/architecture-audit.md) | Design boundaries and limitations |
 | [Maintainer Release Checklist](docs/maintainer-release-checklist.md) | Release gates |
 | [Contributor Matrix Testing](docs/contributor-matrix-testing.md) | Local PHP/Laravel matrix |
@@ -41,13 +42,13 @@ composer require creativecrafts/laravel-sso
 php artisan sso:install --run-migrations
 ```
 
-`sso:install` publishes config (`laravel-sso-config`), migrations (`laravel-sso-migrations`), and optional UI assets (`sso-ui`).
+`sso:install` publishes config (`sso-config`), migrations (`sso-migrations`), and optional UI assets (`sso-ui`).
 
 Manual publish:
 
 ```bash
-php artisan vendor:publish --tag=laravel-sso-config
-php artisan vendor:publish --tag=laravel-sso-migrations
+php artisan vendor:publish --tag=sso-config
+php artisan vendor:publish --tag=sso-migrations
 php artisan migrate
 ```
 
@@ -133,6 +134,11 @@ Details: [Admin API](docs/admin-api.md).
 
 Full checklist: [Security Guide](docs/security.md).
 
+Further reading:
+
+- [Threat Model](laravel-sso-threat-model.md) — STRIDE analysis and integrator checklist
+- [Security Best Practices Report](security_best_practices_report.md) — remediation status and operational guidance
+
 ## Claims persistence
 
 External identities persist minimized canonical claims by default:
@@ -180,6 +186,11 @@ See [CONTRIBUTING](CONTRIBUTING.md).
 ## Security Vulnerabilities
 
 See [SECURITY.md](SECURITY.md) or the GitHub security policy.
+
+## Credits
+
+- [Godspower Oduose](https://github.com/rockblings)
+- [All Contributors](../../contributors)
 
 ## License
 

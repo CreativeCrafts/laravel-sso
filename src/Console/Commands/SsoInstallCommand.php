@@ -18,7 +18,7 @@ final class SsoInstallCommand extends Command
         $this->components->info('Publishing Laravel SSO assets...');
 
         $params = [
-            '--tag' => ['laravel-sso-config', 'laravel-sso-migrations', 'sso-ui'],
+            '--tag' => ['sso-config', 'sso-migrations', 'sso-ui'],
             '--force' => $this->option('force'),
         ];
 

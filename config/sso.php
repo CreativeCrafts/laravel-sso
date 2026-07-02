@@ -9,7 +9,7 @@ use CreativeCrafts\LaravelSso\Drivers\SamlDriver;
  * @return array{
  *     enabled: bool,
  *     routes: array{enabled: bool, prefix: string, middleware: array<int, string>},
- *     ui: array{enabled: bool, prefix: string, middleware: array<int, string>, gate: string},
+ *     ui: array{enabled: bool, prefix: string, middleware: array<int, string>, gate: string, allow_missing_gate: bool},
  *     tenancy: array{
  *         route_param: string,
  *         default_tenant_ulid?: string|null,
@@ -20,12 +20,31 @@ use CreativeCrafts\LaravelSso\Drivers\SamlDriver;
  *     guards: array{default?: string|null, allowed: array<int, string>},
  *     drivers: array<string, class-string>,
  *     attempts: array{ttl_seconds: int, state_length: int, nonce_length: int, code_verifier_length: int, validation_lock_ttl_seconds: int},
- *     provisioning: array{email_column: string, name_column: string, enabled_by_default: bool, connection_setting_key: string},
+ *     provisioning: array{
+ *         email_column: string,
+ *         name_column: string,
+ *         enabled_by_default: bool,
+ *         require_email_verified: bool,
+ *         trust_saml_email_attributes: bool,
+ *         connection_setting_key: string
+ *     },
  *     throttling: array<string, array{enabled: bool, max_attempts: int, decay_minutes: int}>,
- *     linking: array{enabled_by_default: bool, connection_setting_key: string},
- *     audit: array<string, int|string|bool>,
+ *     linking: array{
+ *         enabled_by_default: bool,
+ *         require_email_verified: bool,
+ *         trust_saml_email_attributes: bool,
+ *         connection_setting_key: string
+ *     },
+ *     audit: array{
+ *         extended_context: bool,
+ *         subject_hash_algo: string,
+ *         subject_hint_length: int,
+ *         string_value_max_length: int,
+ *         max_claim_keys: int,
+ *         max_array_items: int
+ *     },
  *     security: array{allow_insecure_idp_urls: bool, allow_private_idp_urls: bool},
- *     claims: array{persist_raw: bool, persist_groups: bool, max_group_items: int},
+ *     claims: array{persist_raw: bool, persist_groups: bool, max_group_items: int, encrypt_persisted: bool},
  *     oidc: array<string, mixed>,
  *     saml: array<string, mixed>
  * }
@@ -212,6 +231,7 @@ return [
             'max_age_seconds' => env('SSO_OIDC_ID_TOKEN_MAX_AGE_SECONDS'),
             'jwks_cache_ttl_seconds' => env('SSO_OIDC_JWKS_CACHE_TTL', 3600),
             'jwks_http_timeout_seconds' => env('SSO_OIDC_JWKS_HTTP_TIMEOUT', 10),
+            // JWT signature algorithms accepted for id_token validation (RS256 recommended).
             'allowed_algorithms' => array_values(array_filter(array_map(
                 static fn (string $value): string => trim($value),
                 explode(',', (string) env('SSO_OIDC_ALLOWED_ALGORITHMS', 'RS256')),

@@ -9,13 +9,13 @@ composer require creativecrafts/laravel-sso
 php artisan sso:install --run-migrations
 ```
 
-`sso:install` publishes config (`laravel-sso-config`), migrations (`laravel-sso-migrations`), and optional UI assets (`sso-ui`), then optionally runs migrations.
+`sso:install` publishes config (`sso-config`), migrations (`sso-migrations`), and optional UI assets (`sso-ui`), then optionally runs migrations.
 
 Manual alternative:
 
 ```bash
-php artisan vendor:publish --tag=laravel-sso-config
-php artisan vendor:publish --tag=laravel-sso-migrations
+php artisan vendor:publish --tag=sso-config
+php artisan vendor:publish --tag=sso-migrations
 php artisan migrate
 ```
 
@@ -165,3 +165,39 @@ Visit the redirect URL or click the login button. Complete the IdP flow and conf
 | Callback state machine | [Auth Attempt Lifecycle](auth-attempt-lifecycle.md) |
 
 Defaults in `config/sso.php` are safe for multi-tenant production; enable provisioning, linking, and SAML email trust only when you have reviewed the security implications.
+
+## SAML quick start
+
+Follow steps 1–3 above, then use SAML instead of OIDC:
+
+```bash
+php artisan sso:make-idp {tenant_ulid} "Acme SAML" --protocol=saml
+php artisan sso:make-connection {tenant_ulid} {idp_id} "Acme SAML Connection"
+```
+
+Configure the IdP (admin API or tinker) with SAML endpoints, entity ID, and signing certificates. Register the ACS URL with your IdP:
+
+```text
+POST https://app.example.test/sso/{tenant_ulid}/{connection_ulid}/acs
+```
+
+Fetch SP metadata for IdP configuration:
+
+```http
+GET /sso/{tenant_ulid}/{connection_ulid}/metadata
+```
+
+Example IdP config shape (see [Configuration Reference](configuration-reference.md) for all keys):
+
+```json
+{
+  "entity_id": "https://idp.example.com/metadata",
+  "sso_url": "https://idp.example.com/sso",
+  "signing_certificates": ["MIIC..."],
+  "acs_binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+}
+```
+
+Begin login uses the same redirect route as OIDC (`/sso/{tenant}/{connection}/redirect`). The package issues a signed AuthnRequest when signing keys are configured; otherwise login proceeds unsigned (see `sso:doctor` warnings).
+
+Login buttons and provisioning settings are identical to the OIDC flow above.

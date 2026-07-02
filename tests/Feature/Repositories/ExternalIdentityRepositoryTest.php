@@ -76,3 +76,68 @@ it('finds and upserts external identities through the repository', function () {
         ->and($updated->email)->toBe('updated@example.test')
         ->and($updated->display_name)->toBe('Updated User');
 });
+
+it('stores string authenticatable identifiers from upsert', function (): void {
+    $repository = new EloquentExternalIdentityRepository();
+
+    $tenant = Tenant::query()->create([
+        'ulid' => (string) Str::ulid(),
+        'name' => 'Tenant B',
+    ]);
+
+    $identityProvider = IdentityProvider::query()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Example SAML',
+        'protocol' => 'saml',
+        'enabled' => true,
+        'config' => [],
+    ]);
+
+    $user = new class () implements Illuminate\Contracts\Auth\Authenticatable {
+        public function getAuthIdentifierName(): string
+        {
+            return 'id';
+        }
+
+        public function getAuthIdentifier(): string
+        {
+            return 'external-user-id';
+        }
+
+        public function getAuthPasswordName(): string
+        {
+            return 'password';
+        }
+
+        public function getAuthPassword(): string
+        {
+            return '';
+        }
+
+        public function getRememberToken(): ?string
+        {
+            return null;
+        }
+
+        public function setRememberToken($value): void
+        {
+        }
+
+        public function getRememberTokenName(): string
+        {
+            return 'remember_token';
+        }
+    };
+
+    $identity = $repository->upsertForUser(
+        tenant: $tenant,
+        identityProvider: $identityProvider,
+        subject: 'nameid-456',
+        email: 'string-id@example.test',
+        displayName: 'String Id User',
+        claims: [],
+        user: $user,
+    );
+
+    expect($identity->authenticatable_id)->toBe('external-user-id');
+});
