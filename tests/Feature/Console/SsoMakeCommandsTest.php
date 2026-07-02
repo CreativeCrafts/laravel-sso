@@ -52,3 +52,15 @@ it('fails maker commands for invalid input', function (): void {
     $this->artisan('sso:make-connection ' . $tenant->ulid . ' 99999 Conn')
         ->assertExitCode(1);
 });
+
+it('fails make-tenant when ulid differs only by case from an existing tenant', function (): void {
+    Tenant::query()->create([
+        'ulid' => '01arz3ndektsv4rrffq69g5fav',
+        'name' => 'Existing Tenant',
+    ]);
+
+    $this->artisan('sso:make-tenant Example --ulid=01ARZ3NDEKTSV4RRFFQ69G5FAV')
+        ->assertExitCode(1);
+
+    expect(Tenant::query()->count())->toBe(1);
+});
