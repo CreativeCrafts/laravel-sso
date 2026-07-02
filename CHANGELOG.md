@@ -4,6 +4,24 @@ All notable changes to `creativecrafts/laravel-sso` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-07-02
+
+Documentation and correctness patch for v1.0.0 integrators.
+
+### Fixed
+
+- OIDC `allowed_algorithms` guard now stays aligned with RS256-only JWKS verification (rejects non-RS256 even when listed in config).
+- Tenant ULID lookups are case-insensitive for ULID-shaped route keys; admin API normalizes caller-supplied ULIDs to uppercase on write.
+
+### Documentation
+
+- Correct SAML getting-started IdP config keys (`saml_sso_url`, `saml_signing_certs_pem`).
+- Fix HTTP status mappings (`OidcCallbackErrorResponse`, `GuardSelectionFailed`) in error catalog and integration guide.
+- Fix `ProvisioningPolicy` contract namespace in integration guide example.
+- Clarify auth-attempt consumption timing in lifecycle docs.
+- Fix throttling config key typo; expand audit env var documentation.
+- Add secondary index notes to database schema reference.
+
 ## [1.0.0] - 2026-07-01
 
 First stable release.
@@ -47,4 +65,5 @@ First stable release.
 - Upgrade Guide, Auth Attempt Lifecycle, Architecture Audit
 - Maintainer Release Checklist, Contributor Matrix Testing
 
+[1.0.1]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.1
 [1.0.0]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.0

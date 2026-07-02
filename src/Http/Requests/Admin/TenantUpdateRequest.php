@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 
+use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -28,5 +29,14 @@ final class TenantUpdateRequest extends FormRequest
           'name' => ['sometimes', 'nullable', 'string', 'max:255'],
           'metadata' => ['sometimes', 'nullable', 'array'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $ulid = $this->input('ulid');
+
+        if (is_string($ulid) && trim($ulid) !== '') {
+            $this->merge(['ulid' => TenantRouteKey::normalizeForStorage($ulid)]);
+        }
     }
 }

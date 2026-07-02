@@ -129,7 +129,12 @@ final readonly class DefaultOidcIdTokenValidator implements OidcIdTokenValidator
             return $algorithm === 'RS256';
         }
 
-        return in_array($algorithm, $allowed, true);
+        if (!in_array($algorithm, $allowed, true)) {
+            return false;
+        }
+
+        // JWKS verification currently supports RS256 only (RSA + SHA-256).
+        return $algorithm === 'RS256';
     }
 
     /**

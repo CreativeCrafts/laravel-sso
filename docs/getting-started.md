@@ -191,12 +191,14 @@ Example IdP config shape (see [Configuration Reference](configuration-reference.
 
 ```json
 {
-  "entity_id": "https://idp.example.com/metadata",
-  "sso_url": "https://idp.example.com/sso",
-  "signing_certificates": ["MIIC..."],
-  "acs_binding": "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST"
+  "saml_sso_url": "https://idp.example.com/sso/saml",
+  "saml_signing_certs_pem": [
+    "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"
+  ]
 }
 ```
+
+ACS binding is configured on the SP side (`sso.saml.sp.acs_binding` in `config/sso.php`), not in IdP JSON.
 
 Begin login uses the same redirect route as OIDC (`/sso/{tenant}/{connection}/redirect`). The package issues a signed AuthnRequest when signing keys are configured; otherwise login proceeds unsigned (see `sso:doctor` warnings).
 

@@ -57,7 +57,7 @@ Returns JSON scaffold metadata (`SSO Admin UI scaffold`).
 
 ### Create tenant
 
-`ulid` is optional. When omitted or blank, the API auto-generates a ULID (same behavior as `sso:make-tenant`).
+`ulid` is optional. When omitted or blank, the API auto-generates a ULID (same behavior as `sso:make-tenant`). Caller-supplied ULIDs that match the ULID format are normalized to uppercase on write; lookups are case-insensitive for ULID-shaped values.
 
 ```http
 POST /admin/sso/tenants

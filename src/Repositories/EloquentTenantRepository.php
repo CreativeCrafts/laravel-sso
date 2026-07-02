@@ -33,7 +33,7 @@ final class EloquentTenantRepository implements TenantRepository
 
         if (TenantRouteKey::looksLikeUlid($ulid)) {
             return Tenant::query()
-                ->where('ulid', strtoupper($ulid))
+                ->whereRaw('UPPER(ulid) = ?', [strtoupper($ulid)])
                 ->first();
         }
 

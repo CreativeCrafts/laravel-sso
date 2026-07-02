@@ -228,7 +228,7 @@ Example:
 
 ```php
 $this->app->bind(
-    \CreativeCrafts\LaravelSso\Contracts\Core\ProvisioningPolicy::class,
+    \CreativeCrafts\LaravelSso\Contracts\Policies\ProvisioningPolicy::class,
     \App\Sso\GroupAwareProvisioningPolicy::class,
 );
 ```
@@ -258,10 +258,11 @@ SSO route exceptions map to empty-body HTTP responses via `SsoExceptionRenderer`
 | `AuthAttemptNotFound`, `TenantNotFound`, `TenantScopedRecordNotFound`, `SsoResourceDisabled` | 404 Not Found |
 | `IdentityLinkDenied`, `ProvisioningDenied`, `EmailVerificationRequired` | 403 Forbidden |
 | `CallbackStateMissing`, `MissingExternalSubject`, `OidcCallbackCodeMissing`, `SamlAcsRequestInvalid`, `SamlResponseStatusInvalid`, `SamlSignatureMissing`, `UnsupportedSsoProtocol` | 400 Bad Request |
-| `OidcIdTokenValidationFailed`, `OidcTokenExchangeFailed`, `SamlAssertionConditionsInvalid`, `SamlClaimsNormalizationFailed`, `SamlSignatureInvalid` | 401 Unauthorized |
+| `OidcCallbackErrorResponse`, `OidcIdTokenValidationFailed`, `OidcTokenExchangeFailed`, `SamlAssertionConditionsInvalid`, `SamlClaimsNormalizationFailed`, `SamlSignatureInvalid` | 401 Unauthorized |
 | `OidcAuthorizationRequestFailed`, `OidcDiscoveryFailed`, `OidcEndpointResolutionFailed`, `OidcJwksFetchFailed`, `OidcUserinfoFailed`, `SamlAuthorizationRequestFailed`, `SamlMetadataParseFailed`, `TenantResolutionFailed`, `UnsafeIdpUrl` | 502 Bad Gateway |
+| `GuardSelectionFailed` | 500 Internal Server Error |
 
-Other exceptions fall through to Laravel's default handler.
+Other unlisted exceptions fall through to Laravel's default handler.
 
 See [Error Catalog](error-catalog.md) for operator guidance.
 
