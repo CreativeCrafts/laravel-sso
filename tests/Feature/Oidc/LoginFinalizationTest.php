@@ -74,7 +74,7 @@ function createOidcIntegrationFixture(bool $allowProvisioning = true): array
             'client_secret' => 'secret-xyz',
             'redirect_uri' => route('sso.oidc.callback', [
                 'tenant' => $tenant->ulid,
-                'connection' => (string) $connection->id,
+                'connection' => $connection->ulid,
             ], true),
             'userinfo_enabled' => false,
         ],
@@ -95,7 +95,7 @@ it('completes the full OIDC login flow through the real driver and redirects to 
     $redirectResponse = $this->get(
         route('sso.redirect', [
             'tenant' => $tenant->ulid,
-            'connection' => (string) $connection->id,
+            'connection' => $connection->ulid,
         ]) . '?redirect_to=' . urlencode($intended),
     );
 
@@ -127,6 +127,7 @@ it('completes the full OIDC login flow through the real driver and redirects to 
         'nonce' => $attempt?->nonce,
         'sub' => 'sub-oidc-1',
         'email' => 'user@example.test',
+        'email_verified' => true,
         'name' => 'User One',
     ], $keys['private'], $kid);
 
@@ -144,7 +145,7 @@ it('completes the full OIDC login flow through the real driver and redirects to 
 
     $callbackResponse = $this->get(route('sso.oidc.callback', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]) . '?state=' . urlencode((string) $state) . '&code=' . urlencode('code-123'));
 
     $callbackResponse->assertRedirect($intended);
@@ -174,7 +175,7 @@ it('fails the full OIDC callback flow when the id token nonce does not match the
 
     $redirectResponse = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -220,7 +221,7 @@ it('fails the full OIDC callback flow when the id token nonce does not match the
 
     $callbackResponse = $this->get(route('sso.oidc.callback', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]) . '?state=' . urlencode((string) $state) . '&code=' . urlencode('code-456'));
 
     $callbackResponse->assertStatus(500);
@@ -244,7 +245,7 @@ it('fails the full OIDC callback flow when the auth attempt has expired before c
 
     $redirectResponse = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -269,10 +270,10 @@ it('fails the full OIDC callback flow when the auth attempt has expired before c
 
     $callbackResponse = $this->get(route('sso.oidc.callback', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]) . '?state=' . urlencode((string) $state) . '&code=' . urlencode('code-expired'));
 
-    $callbackResponse->assertStatus(500);
+    $callbackResponse->assertStatus(410);
 
     expect(auth('web')->check())->toBeFalse();
 
@@ -301,7 +302,7 @@ it('fails the full OIDC login flow when provisioning is denied by policy', funct
 
     $redirectResponse = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -347,10 +348,10 @@ it('fails the full OIDC login flow when provisioning is denied by policy', funct
 
     $callbackResponse = $this->get(route('sso.oidc.callback', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]) . '?state=' . urlencode((string) $state) . '&code=' . urlencode('code-denied'));
 
-    $callbackResponse->assertStatus(500);
+    $callbackResponse->assertStatus(403);
 
     expect(auth('web')->check())->toBeFalse();
 

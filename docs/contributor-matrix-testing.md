@@ -114,3 +114,13 @@ When a PHP-version-specific issue is suspected, prefer opening a draft PR and le
 ## Release rule
 
 Do not treat a single local dependency set as release proof. A release branch is ready only when CI has passed checks and coverage for the full supported matrix.
+
+## Documentation changes
+
+When you add or rename files under `docs/`, update cross-links in `README.md` and run:
+
+```bash
+./vendor/bin/pest tests/Unit/DocumentationIntegrityTest.php
+```
+
+That test validates local markdown links across `README.md`, `SECURITY.md`, and every file in `docs/`.

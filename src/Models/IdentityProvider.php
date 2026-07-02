@@ -7,9 +7,11 @@ namespace CreativeCrafts\LaravelSso\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * @property int $id
+ * @property string|null $ulid
  * @property int $tenant_id
  * @property string $name
  * @property string $protocol
@@ -21,6 +23,7 @@ final class IdentityProvider extends Model
     protected $table = 'sso_identity_providers';
 
     protected $fillable = [
+      'ulid',
       'tenant_id',
       'name',
       'protocol',
@@ -32,6 +35,15 @@ final class IdentityProvider extends Model
       'enabled' => 'bool',
       'config' => 'encrypted:array',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(static function (IdentityProvider $identityProvider): void {
+            if ($identityProvider->ulid === null || $identityProvider->ulid === '') {
+                $identityProvider->ulid = (string) Str::ulid();
+            }
+        });
+    }
 
     /**
      * @return BelongsTo<Tenant, $this>

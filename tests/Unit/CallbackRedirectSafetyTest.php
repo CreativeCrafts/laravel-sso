@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use CreativeCrafts\LaravelSso\Http\Controllers\Concerns\HandlesCallbackResponse;
+use CreativeCrafts\LaravelSso\Core\SafeRedirectValidator;
 use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use Illuminate\Http\Request;
 
@@ -53,10 +53,7 @@ it('rejects literal control-character callback redirects', function (): void {
 
 function resolveCallbackRedirectForTest(string $redirectTo): string
 {
-    $subject = new class () {
-        use HandlesCallbackResponse;
-    };
-
+    $validator = new SafeRedirectValidator();
     $request = Request::create('https://app.example.test/sso/tenant/1/callback', 'GET');
 
     $attempt = new AuthAttempt();
@@ -64,14 +61,5 @@ function resolveCallbackRedirectForTest(string $redirectTo): string
         'redirect_to' => $redirectTo,
     ]);
 
-    $method = new ReflectionMethod($subject, 'resolveRedirect');
-    $method->setAccessible(true);
-
-    $result = $method->invoke($subject, $request, $attempt);
-
-    if (!is_string($result)) {
-        throw new RuntimeException('Callback redirect resolver returned a non-string value.');
-    }
-
-    return $result;
+    return $validator->resolveStoredRedirect($request, $attempt->redirect_to);
 }

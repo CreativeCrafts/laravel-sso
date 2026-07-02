@@ -12,6 +12,11 @@ use Illuminate\Contracts\Config\Repository as Config;
 
 final readonly class DefaultIdpOutboundUrlPolicy implements IdpOutboundUrlPolicy
 {
+    /**
+     * DNS resolution is evaluated at request time. Hostnames may resolve differently
+     * later due to TTL changes or rebinding; callers disable HTTP redirects to reduce
+     * follow-up request risk after this check completes.
+     */
     public function __construct(
         private UrlTrustPolicy $urls,
         private HostnameResolver $resolver,

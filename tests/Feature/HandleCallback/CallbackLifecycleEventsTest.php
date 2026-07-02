@@ -6,7 +6,7 @@ use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
 use CreativeCrafts\LaravelSso\Events\CallbackFailed;
 use CreativeCrafts\LaravelSso\Events\CallbackSucceeded;
-use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptAlreadyConsumed;
+use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptValidationInProgress;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
@@ -116,13 +116,13 @@ it('dispatches callback failed when callback handling throws', function () {
     $service->handle($request, $tenant, $connection->id);
 
     expect(fn () => $service->handle($request, $tenant, $connection->id))
-        ->toThrow(AuthAttemptAlreadyConsumed::class);
+        ->toThrow(AuthAttemptValidationInProgress::class);
 
     Event::assertDispatchedTimes(CallbackFailed::class, 1);
     Event::assertDispatched(CallbackFailed::class, function (CallbackFailed $event) use ($tenant, $connection): bool {
         return $event->tenant->is($tenant)
             && $event->connectionId === $connection->id
-            && $event->exceptionClass === AuthAttemptAlreadyConsumed::class
+            && $event->exceptionClass === AuthAttemptValidationInProgress::class
             && $event->attempt === null
             && $event->connection?->is($connection) === true
             && $event->identityProvider !== null

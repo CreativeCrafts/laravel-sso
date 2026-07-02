@@ -37,7 +37,7 @@ it('builds a redirect-based authn request for saml begin login', function () {
 
     $response = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]));
 
     $response->assertRedirect();

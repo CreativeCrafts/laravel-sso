@@ -17,3 +17,15 @@ it('builds redirect url', function (): void {
 
     expect($url)->toContain('/sso/');
 });
+
+it('appends redirect_to query parameter when provided', function (): void {
+    $tenant = $this->createTenant();
+    $idp = $this->createIdentityProvider($tenant);
+    $connection = $this->createConnection($tenant, $idp);
+
+    $url = sso_redirect_url($tenant->ulid, $connection->id, '/dashboard');
+
+    expect($url)
+        ->toContain('/sso/')
+        ->toContain('redirect_to=' . rawurlencode('/dashboard'));
+});

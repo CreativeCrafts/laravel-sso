@@ -61,7 +61,12 @@ final class SsoMakeIdentityProviderCommand extends Command
             'config' => [],
         ]);
 
-        $this->components->info("Identity provider created [id: {$idp->id}] for tenant {$tenant->ulid}");
+        $this->components->info(sprintf(
+            'Identity provider created [id: %d, ulid: %s] for tenant %s',
+            $idp->id,
+            $idp->ulid,
+            $tenant->ulid,
+        ));
 
         return self::SUCCESS;
     }

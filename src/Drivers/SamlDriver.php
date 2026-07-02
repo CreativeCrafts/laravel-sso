@@ -7,20 +7,22 @@ namespace CreativeCrafts\LaravelSso\Drivers;
 use CreativeCrafts\LaravelSso\Contracts\Core\SsoDriver;
 use CreativeCrafts\LaravelSso\Contracts\Core\UrlTrustPolicy;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionConditionsValidator;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionReplayGuard;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlSignatureValidator;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverCallbackResult;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverStartResult;
 use CreativeCrafts\LaravelSso\Exceptions\SamlAcsRequestInvalid;
+use CreativeCrafts\LaravelSso\Exceptions\SamlAuthorizationRequestFailed;
 use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\Connection;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use CreativeCrafts\LaravelSso\Protocol\Saml\Dto\SamlSignedXml;
+use CreativeCrafts\LaravelSso\Protocol\Saml\SamlAuthnRequestSigner;
 use DOMElement;
 use DOMXPath;
 use Illuminate\Http\Request;
-use RuntimeException;
 
 final readonly class SamlDriver implements SsoDriver
 {
@@ -31,6 +33,8 @@ final readonly class SamlDriver implements SsoDriver
         private SamlSignatureValidator $signatures,
         private SamlAssertionConditionsValidator $conditions,
         private SamlClaimsNormalizer $claimsNormalizer,
+        private SamlAssertionReplayGuard $assertionReplayGuard,
+        private SamlAuthnRequestSigner $authnRequestSigner,
         private UrlTrustPolicy $urls,
     ) {
     }
@@ -45,7 +49,7 @@ final readonly class SamlDriver implements SsoDriver
         $identityProvider = $connection->identityProvider;
 
         if (!$identityProvider instanceof IdentityProvider) {
-            throw new RuntimeException('SAML identity provider is missing on connection.');
+            throw SamlAuthorizationRequestFailed::missingIdentityProvider();
         }
 
         /** @var array<string, mixed> $config */
@@ -53,23 +57,23 @@ final readonly class SamlDriver implements SsoDriver
 
         $ssoUrl = $config['saml_sso_url'] ?? null;
         if (!is_string($ssoUrl) || $ssoUrl === '') {
-            throw new RuntimeException('SAML identity provider is missing config.saml_sso_url.');
+            throw SamlAuthorizationRequestFailed::missingConfig('saml_sso_url');
         }
 
         $this->urls->assertTrusted($ssoUrl, 'config.saml_sso_url');
 
         if ($attempt->state === '') {
-            throw new RuntimeException('SAML auth attempt is missing state.');
+            throw SamlAuthorizationRequestFailed::missingAttemptField('state');
         }
 
         $acsUrl = route('sso.saml.acs', [
             'tenant' => $tenant->ulid,
-            'connection' => (string) $connection->id,
+            'connection' => $connection->ulid,
         ], true);
 
         $metadataUrl = route('sso.saml.metadata', [
             'tenant' => $tenant->ulid,
-            'connection' => (string) $connection->id,
+            'connection' => $connection->ulid,
         ], true);
 
         $configuredEntityId = config('sso.saml.sp.entity_id');
@@ -78,7 +82,7 @@ final readonly class SamlDriver implements SsoDriver
         $requestId = $this->requestIdFromAttempt($attempt);
 
         if ($requestId === null) {
-            throw new RuntimeException('SAML auth attempt is missing request ID.');
+            throw SamlAuthorizationRequestFailed::missingAttemptField('saml_request_id');
         }
 
         $issueInstant = now('UTC')->format('Y-m-d\TH:i:s\Z');
@@ -91,10 +95,12 @@ final readonly class SamlDriver implements SsoDriver
             issuer: $issuer,
         );
 
+        $authnRequestXml = $this->maybeSignAuthnRequest($authnRequestXml);
+
         $deflated = gzdeflate($authnRequestXml, 9);
 
         if (!is_string($deflated) || $deflated === '') {
-            throw new RuntimeException('Unable to compress SAML AuthnRequest.');
+            throw SamlAuthorizationRequestFailed::compressionFailed();
         }
 
         $query = http_build_query([
@@ -130,7 +136,7 @@ final readonly class SamlDriver implements SsoDriver
         $identityProvider = $connection->identityProvider;
 
         if (!$identityProvider instanceof IdentityProvider) {
-            throw new RuntimeException('SAML identity provider is missing on connection.');
+            throw SamlAuthorizationRequestFailed::missingIdentityProvider();
         }
 
         /** @var array<string, mixed> $config */
@@ -165,14 +171,21 @@ final readonly class SamlDriver implements SsoDriver
             throw SamlAcsRequestInvalid::correlationMismatch();
         }
 
+        $assertionId = $signed->validatedAssertionId ?? '';
+        $replayTtl = $this->assertionReplayCacheSeconds();
+
+        if ($assertionId !== '') {
+            $this->assertionReplayGuard->assertNotReplayed($assertionId, $replayTtl);
+        }
+
         $acsUrl = route('sso.saml.acs', [
             'tenant' => $tenant->ulid,
-            'connection' => (string) $connection->id,
+            'connection' => $connection->ulid,
         ], true);
 
         $metadataUrl = route('sso.saml.metadata', [
             'tenant' => $tenant->ulid,
-            'connection' => (string) $connection->id,
+            'connection' => $connection->ulid,
         ], true);
 
         $entityId = config('sso.saml.sp.entity_id');
@@ -191,6 +204,10 @@ final readonly class SamlDriver implements SsoDriver
             requireDestination: (bool) config('sso.saml.require_destination', true),
         );
 
+        if ($assertionId !== '') {
+            $this->assertionReplayGuard->markConsumed($assertionId, $replayTtl);
+        }
+
         $canonicalClaims = $this->claimsNormalizer->normalize($signed);
 
         return new DriverCallbackResult(
@@ -208,6 +225,29 @@ final readonly class SamlDriver implements SsoDriver
             ],
             error: null,
         );
+    }
+
+    private function maybeSignAuthnRequest(string $authnRequestXml): string
+    {
+        if (!(bool) config('sso.saml.sp.sign_authn_requests', false)) {
+            return $authnRequestXml;
+        }
+
+        $privateKey = config('sso.saml.sp.signing_private_key_pem');
+        $certificate = config('sso.saml.sp.signing_certificate_pem');
+
+        if (!is_string($privateKey) || $privateKey === '' || !is_string($certificate) || $certificate === '') {
+            throw SamlAuthorizationRequestFailed::signingKeysMissing();
+        }
+
+        return $this->authnRequestSigner->sign($authnRequestXml, $privateKey, $certificate);
+    }
+
+    private function assertionReplayCacheSeconds(): int
+    {
+        $value = config('sso.saml.assertion_replay_cache_seconds', 3600);
+
+        return is_int($value) && $value > 0 ? $value : 3600;
     }
 
     private function requestIdFromAttempt(AuthAttempt $attempt): ?string

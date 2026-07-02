@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
 use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
-use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptAlreadyConsumed;
+use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptValidationInProgress;
 use CreativeCrafts\LaravelSso\Exceptions\InvalidAuthAttemptBinding;
 use CreativeCrafts\LaravelSso\Models\AuditLog;
 use CreativeCrafts\LaravelSso\Models\Connection;
@@ -132,7 +132,7 @@ it('can include extended redacted audit detail when explicitly enabled', functio
         ->and($audit?->context['extended']['claims']['email'])->toBe('u***@example.test');
 });
 
-it('prevents replay by rejecting second consumption and writes a redacted failure audit', function () {
+it('prevents replay by rejecting a second validation while the attempt remains unconsumed', function () {
     config()->set('sso.drivers', [
         'oidc' => FakeOidcCallbackDriver::class,
     ]);
@@ -173,7 +173,7 @@ it('prevents replay by rejecting second consumption and writes a redacted failur
 
     $fn = fn () => $useCase->handle($request, $tenant, $connection->id);
 
-    expect($fn)->toThrow(AuthAttemptAlreadyConsumed::class);
+    expect($fn)->toThrow(AuthAttemptValidationInProgress::class);
 
     $failedAudit = AuditLog::query()
         ->where('tenant_id', $tenant->id)
@@ -182,7 +182,7 @@ it('prevents replay by rejecting second consumption and writes a redacted failur
 
     expect($failedAudit)->not->toBeNull()
         ->and($failedAudit?->context['status'])->toBe('failed')
-        ->and($failedAudit?->context['error_code'])->toBe('AuthAttemptAlreadyConsumed')
+        ->and($failedAudit?->context['error_code'])->toBe('AuthAttemptValidationInProgress')
         ->and($failedAudit?->context)->not->toHaveKey('message')
         ->and($failedAudit?->context)->not->toHaveKey('state');
 

@@ -6,11 +6,13 @@ namespace CreativeCrafts\LaravelSso\Http\Controllers\Admin;
 
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
+use CreativeCrafts\LaravelSso\Core\IdentityProviderRouteResolver;
 use CreativeCrafts\LaravelSso\Exceptions\TenantNotFound;
 use CreativeCrafts\LaravelSso\Exceptions\TenantScopedRecordNotFound;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\IdentityProviderStoreRequest;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\IdentityProviderUpdateRequest;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
+use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -20,16 +22,13 @@ final readonly class IdentityProvidersController
     public function __construct(
         private TenantRepository $tenants,
         private IdentityProviderRepository $identityProviders,
+        private IdentityProviderRouteResolver $identityProviderRoutes,
     ) {
     }
 
     public function index(Request $request, string $tenant): JsonResponse
     {
-        try {
-            $tenantModel = $this->tenants->getByUlid($tenant);
-        } catch (TenantNotFound) {
-            abort(404);
-        }
+        $tenantModel = $this->resolveTenant($tenant);
 
         $items = $this->identityProviders->listForTenant($tenantModel);
 
@@ -40,11 +39,7 @@ final readonly class IdentityProvidersController
 
     public function store(IdentityProviderStoreRequest $request, string $tenant): JsonResponse
     {
-        try {
-            $tenantModel = $this->tenants->getByUlid($tenant);
-        } catch (TenantNotFound) {
-            abort(404);
-        }
+        $tenantModel = $this->resolveTenant($tenant);
 
         /** @var array<string, mixed> $payload */
         $payload = $request->validated();
@@ -56,15 +51,10 @@ final readonly class IdentityProvidersController
         ], Response::HTTP_CREATED);
     }
 
-    public function show(Request $request, string $tenant, int $idp): JsonResponse
+    public function show(Request $request, string $tenant, string $idp): JsonResponse
     {
-        try {
-            $tenantModel = $this->tenants->getByUlid($tenant);
-        } catch (TenantNotFound) {
-            abort(404);
-        }
-
-        $model = $this->identityProviders->findForTenant($tenantModel, $idp);
+        $tenantModel = $this->resolveTenant($tenant);
+        $model = $this->identityProviders->findForTenantByRouteKey($tenantModel, $idp);
 
         if (!$model instanceof IdentityProvider) {
             abort(404);
@@ -75,19 +65,19 @@ final readonly class IdentityProvidersController
         ]);
     }
 
-    public function update(IdentityProviderUpdateRequest $request, string $tenant, int $idp): JsonResponse
+    public function update(IdentityProviderUpdateRequest $request, string $tenant, string $idp): JsonResponse
     {
-        try {
-            $tenantModel = $this->tenants->getByUlid($tenant);
-        } catch (TenantNotFound) {
-            abort(404);
-        }
+        $tenantModel = $this->resolveTenant($tenant);
 
         /** @var array<string, mixed> $payload */
         $payload = $request->validated();
 
         try {
-            $model = $this->identityProviders->updateForTenant($tenantModel, $idp, $payload);
+            $model = $this->identityProviders->updateForTenant(
+                $tenantModel,
+                $this->identityProviderRoutes->resolveId($tenantModel, $idp),
+                $payload,
+            );
         } catch (TenantScopedRecordNotFound) {
             abort(404);
         }
@@ -97,16 +87,15 @@ final readonly class IdentityProvidersController
         ]);
     }
 
-    public function destroy(Request $request, string $tenant, int $idp): JsonResponse
+    public function destroy(Request $request, string $tenant, string $idp): JsonResponse
     {
-        try {
-            $tenantModel = $this->tenants->getByUlid($tenant);
-        } catch (TenantNotFound) {
-            abort(404);
-        }
+        $tenantModel = $this->resolveTenant($tenant);
 
         try {
-            $this->identityProviders->deleteForTenant($tenantModel, $idp);
+            $this->identityProviders->deleteForTenant(
+                $tenantModel,
+                $this->identityProviderRoutes->resolveId($tenantModel, $idp),
+            );
         } catch (TenantScopedRecordNotFound) {
             abort(404);
         }
@@ -126,6 +115,7 @@ final readonly class IdentityProvidersController
 
         return [
             'id' => (int) $idp->id,
+            'ulid' => (string) $idp->ulid,
             'tenant_id' => (int) $idp->tenant_id,
             'name' => (string) $idp->name,
             'protocol' => (string) $idp->protocol,
@@ -154,7 +144,6 @@ final readonly class IdentityProvidersController
             }
 
             $sanitized[$key] = $this->isSensitiveKey($key) ? '[redacted]' : $value;
-
         }
 
         return $sanitized;
@@ -190,5 +179,14 @@ final readonly class IdentityProvidersController
         return str_ends_with($normalized, '_secret')
             || str_ends_with($normalized, '_token')
             || str_ends_with($normalized, '_key');
+    }
+
+    private function resolveTenant(string $tenant): Tenant
+    {
+        try {
+            return $this->tenants->getByUlid($tenant);
+        } catch (TenantNotFound) {
+            abort(404);
+        }
     }
 }

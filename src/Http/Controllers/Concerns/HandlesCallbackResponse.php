@@ -4,10 +4,19 @@ declare(strict_types=1);
 
 namespace CreativeCrafts\LaravelSso\Http\Controllers\Concerns;
 
+use CreativeCrafts\LaravelSso\Contracts\Core\AuthAttemptService;
+use CreativeCrafts\LaravelSso\Contracts\Core\HandleCallback;
+use CreativeCrafts\LaravelSso\Contracts\Core\ProvisionAndLink;
+use CreativeCrafts\LaravelSso\Contracts\Core\TenantResolver;
+use CreativeCrafts\LaravelSso\Contracts\Repositories\AuthAttemptRepository;
+use CreativeCrafts\LaravelSso\Core\ConnectionRouteResolver;
+use CreativeCrafts\LaravelSso\Core\SafeRedirectValidator;
 use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Http\Request;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 trait HandlesCallbackResponse
 {
@@ -19,7 +28,7 @@ trait HandlesCallbackResponse
             abort(404);
         }
 
-        $connectionId = (int) $connection;
+        $connectionId = $this->connectionRoutes->resolveId($tenantModel, $connection);
 
         $callbackResult = $this->handleCallback->handle(
             request: $request,
@@ -39,16 +48,47 @@ trait HandlesCallbackResponse
 
         $attempt = $this->authAttempts->findByState($tenantModel, $state);
 
-        $redirectTo = $this->resolveRedirect($request, $attempt);
-
-        $this->provisionAndLink->handle(
-            request: $request,
-            tenant: $tenantModel,
-            connectionId: $connectionId,
-            callback: $callbackResult,
+        $redirectTo = $this->redirectValidator()->resolveStoredRedirect(
+            $request,
+            $attempt?->redirect_to,
         );
 
+        try {
+            $this->provisionAndLink->handle(
+                request: $request,
+                tenant: $tenantModel,
+                connectionId: $connectionId,
+                callback: $callbackResult,
+            );
+
+            if ($attempt instanceof AuthAttempt) {
+                $this->authAttemptService->markConsumed($attempt);
+            }
+        } catch (Throwable $exception) {
+            if ($attempt instanceof AuthAttempt) {
+                try {
+                    $this->authAttemptService->markConsumed($attempt);
+                } catch (Throwable $markConsumedException) {
+                    $this->ssoLogger()->error('SSO auth attempt terminal consume failed', [
+                        'exception' => $markConsumedException->getMessage(),
+                    ]);
+                }
+            }
+
+            throw $exception;
+        }
+
         return redirect()->to($redirectTo);
+    }
+
+    private function redirectValidator(): SafeRedirectValidator
+    {
+        return app(SafeRedirectValidator::class);
+    }
+
+    private function ssoLogger(): LoggerInterface
+    {
+        return $this->logger;
     }
 
     private function extractState(Request $request): ?string
@@ -67,107 +107,5 @@ trait HandlesCallbackResponse
         }
 
         return null;
-    }
-
-    private function resolveRedirect(Request $request, ?AuthAttempt $attempt): string
-    {
-        if (!$attempt instanceof AuthAttempt) {
-            return '/';
-        }
-
-        $redirect = $attempt->redirect_to;
-
-        if (!is_string($redirect) || $redirect === '') {
-            return '/';
-        }
-
-        $redirect = trim($redirect);
-        $decodedRedirect = rawurldecode($redirect);
-
-        if (
-            $redirect === '' ||
-            $decodedRedirect === '' ||
-            $this->containsUnsafeRedirectCharacters($redirect) ||
-            $this->containsUnsafeRedirectCharacters($decodedRedirect)
-        ) {
-            return '/';
-        }
-
-        if ($this->isSafeLocalRedirectPath($redirect, $decodedRedirect)) {
-            return $redirect;
-        }
-
-        if (filter_var($redirect, FILTER_VALIDATE_URL) === false) {
-            return '/';
-        }
-
-        $targetParts = parse_url($redirect);
-        $currentParts = parse_url($request->getSchemeAndHttpHost());
-
-        if (!is_array($targetParts) || !is_array($currentParts)) {
-            return '/';
-        }
-
-        return $this->isSameOrigin($targetParts, $currentParts) ? $redirect : '/';
-    }
-
-    private function containsUnsafeRedirectCharacters(string $redirect): bool
-    {
-        if (preg_match('/[\x00-\x1F\x7F]/', $redirect) === 1) {
-            return true;
-        }
-
-        return str_contains($redirect, '\\');
-    }
-
-    private function isSafeLocalRedirectPath(string $redirect, string $decodedRedirect): bool
-    {
-        if (!str_starts_with($redirect, '/')) {
-            return false;
-        }
-
-        if (str_starts_with($redirect, '//')) {
-            return false;
-        }
-
-        return !str_starts_with($decodedRedirect, '//');
-    }
-
-    /**
-     * @param array<string, mixed> $target
-     * @param array<string, mixed> $current
-     */
-    private function isSameOrigin(array $target, array $current): bool
-    {
-        $targetSchemeRaw = $target['scheme'] ?? null;
-        $currentSchemeRaw = $current['scheme'] ?? null;
-
-        $targetScheme = is_string($targetSchemeRaw) ? strtolower($targetSchemeRaw) : '';
-        $currentScheme = is_string($currentSchemeRaw) ? strtolower($currentSchemeRaw) : '';
-
-        $targetHostRaw = $target['host'] ?? null;
-        $currentHostRaw = $current['host'] ?? null;
-
-        $targetHost = is_string($targetHostRaw) ? strtolower($targetHostRaw) : '';
-        $currentHost = is_string($currentHostRaw) ? strtolower($currentHostRaw) : '';
-
-        $targetPortRaw = $target['port'] ?? null;
-        $currentPortRaw = $current['port'] ?? null;
-
-        $targetPort = is_int($targetPortRaw) ? $targetPortRaw : $this->defaultPort($targetScheme);
-        $currentPort = is_int($currentPortRaw) ? $currentPortRaw : $this->defaultPort($currentScheme);
-
-        return $targetScheme !== ''
-            && $currentScheme !== ''
-            && $targetHost !== ''
-            && $currentHost !== ''
-            && $targetScheme === $currentScheme
-            && $targetHost === $currentHost
-            && $targetPort === $currentPort;
-    }
-
-    private function defaultPort(string $scheme): int
-    {
-        return $scheme === 'https' ? 443 : 80;
     }
 }

@@ -1,0 +1,64 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (!Schema::hasColumn('sso_identity_providers', 'ulid')) {
+            Schema::table('sso_identity_providers', function (Blueprint $table): void {
+                $table->ulid('ulid')->nullable()->after('tenant_id');
+            });
+
+            foreach (DB::table('sso_identity_providers')->select('id')->orderBy('id')->cursor() as $row) {
+                DB::table('sso_identity_providers')
+                    ->where('id', $row->id)
+                    ->update(['ulid' => (string) Str::ulid()]);
+            }
+
+            Schema::table('sso_identity_providers', function (Blueprint $table): void {
+                $table->unique('ulid');
+            });
+        }
+
+        if (!Schema::hasColumn('sso_connections', 'ulid')) {
+            Schema::table('sso_connections', function (Blueprint $table): void {
+                $table->ulid('ulid')->nullable()->after('identity_provider_id');
+            });
+
+            foreach (DB::table('sso_connections')->select('id')->orderBy('id')->cursor() as $row) {
+                DB::table('sso_connections')
+                    ->where('id', $row->id)
+                    ->update(['ulid' => (string) Str::ulid()]);
+            }
+
+            Schema::table('sso_connections', function (Blueprint $table): void {
+                $table->unique('ulid');
+            });
+        }
+    }
+
+    public function down(): void
+    {
+        if (Schema::hasColumn('sso_connections', 'ulid')) {
+            Schema::table('sso_connections', function (Blueprint $table): void {
+                $table->dropUnique(['ulid']);
+                $table->dropColumn('ulid');
+            });
+        }
+
+        if (Schema::hasColumn('sso_identity_providers', 'ulid')) {
+            Schema::table('sso_identity_providers', function (Blueprint $table): void {
+                $table->dropUnique(['ulid']);
+                $table->dropColumn('ulid');
+            });
+        }
+    }
+};

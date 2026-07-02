@@ -10,7 +10,6 @@ use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptExpired;
 use CreativeCrafts\LaravelSso\Exceptions\AuthAttemptValidationInProgress;
 use CreativeCrafts\LaravelSso\Exceptions\OidcIdTokenValidationFailed;
 use CreativeCrafts\LaravelSso\Exceptions\SamlSignatureInvalid;
-use CreativeCrafts\LaravelSso\Http\Controllers\Concerns\HandlesCallbackResponse;
 use CreativeCrafts\LaravelSso\Models\AuthAttempt;
 use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
@@ -171,26 +170,13 @@ it('keeps expired stale validation locks rejected', function (): void {
 });
 
 it('blocks protocol-relative callback redirects', function (): void {
-    $controller = new class () {
-        use HandlesCallbackResponse;
-
-        public function redirectFor(Request $request, ?AuthAttempt $attempt): string
-        {
-            return $this->resolveRedirect($request, $attempt);
-        }
-    };
-
+    $validator = new \CreativeCrafts\LaravelSso\Core\SafeRedirectValidator();
     $request = Request::create('https://app.example.com/sso/callback', 'GET');
 
-    $protocolRelative = new AuthAttempt(['redirect_to' => '//evil.example.com/phish']);
-    $localPath = new AuthAttempt(['redirect_to' => '/dashboard']);
-    $sameOrigin = new AuthAttempt(['redirect_to' => 'https://app.example.com/dashboard']);
-    $external = new AuthAttempt(['redirect_to' => 'https://evil.example.com/dashboard']);
-
-    expect($controller->redirectFor($request, $protocolRelative))->toBe('/')
-        ->and($controller->redirectFor($request, $localPath))->toBe('/dashboard')
-        ->and($controller->redirectFor($request, $sameOrigin))->toBe('https://app.example.com/dashboard')
-        ->and($controller->redirectFor($request, $external))->toBe('/');
+    expect($validator->resolveStoredRedirect($request, '//evil.example.com/phish'))->toBe('/')
+        ->and($validator->resolveStoredRedirect($request, '/dashboard'))->toBe('/dashboard')
+        ->and($validator->resolveStoredRedirect($request, 'https://app.example.com/dashboard'))->toBe('https://app.example.com/dashboard')
+        ->and($validator->resolveStoredRedirect($request, 'https://evil.example.com/dashboard'))->toBe('/');
 });
 
 it('requires azp for multi-audience OIDC ID tokens', function (): void {

@@ -37,7 +37,7 @@ it('redirect endpoint returns 302 to driver start URL', function () {
 
     $url = route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]);
 
     $resp = $this->get($url);

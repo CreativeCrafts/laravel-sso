@@ -11,6 +11,13 @@ use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Config\Repository as Config;
 
+/**
+ * Deny-by-default linking policy based on connection settings only.
+ *
+ * This policy intentionally ignores IdP claims. Implement a custom
+ * IdentityLinkPolicy (see GroupRequiredIdentityLinkPolicy) when linking must
+ * depend on groups, roles, or other claim attributes.
+ */
 final readonly class DefaultIdentityLinkPolicy implements IdentityLinkPolicy
 {
     public function __construct(private Config $config)

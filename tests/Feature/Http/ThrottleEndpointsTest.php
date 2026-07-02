@@ -98,7 +98,7 @@ it('throttles the redirect endpoint and resets after the decay window', function
 
     $url = route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]);
 
     $first = $this->get($url);
@@ -129,7 +129,7 @@ it('uses an independent callback limiter bucket from the redirect limiter', func
 
     $redirectUrl = route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]);
 
     $redirectResponse = $this->get($redirectUrl);
@@ -146,7 +146,7 @@ it('uses an independent callback limiter bucket from the redirect limiter', func
 
     $callbackUrl = route('sso.oidc.callback', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]);
 
     $callbackResponse = $this->get($callbackUrl . '?state=' . urlencode((string) $state));
@@ -158,6 +158,9 @@ it('uses an independent callback limiter bucket from the redirect limiter', func
 it('throttles the saml acs endpoint and returns 429 with rate limit headers', function () {
     ensureThrottleUsersTable();
 
+    config()->set('sso.provisioning.trust_saml_email_attributes', true);
+    config()->set('sso.linking.trust_saml_email_attributes', true);
+
     config()->set('sso.throttling.acs.max_attempts', 1);
     config()->set('sso.throttling.acs.decay_minutes', 1);
 
@@ -167,7 +170,7 @@ it('throttles the saml acs endpoint and returns 429 with rate limit headers', fu
 
     $redirectResponse = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -189,12 +192,12 @@ expect($requestId)->toBeString()->not->toBe('');
 
 $acsUrl = route('sso.saml.acs', [
     'tenant' => $tenant->ulid,
-    'connection' => (string) $connection->id,
+    'connection' => $connection->ulid,
 ], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
@@ -216,7 +219,7 @@ $acsUrl = route('sso.saml.acs', [
 
     $first = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,
@@ -226,7 +229,7 @@ $acsUrl = route('sso.saml.acs', [
 
     $second = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,

@@ -16,6 +16,7 @@ final class SsoButton extends Component
         public string $tenant,
         public string $connection,
         public string $label = 'Sign in with SSO',
+        public ?string $redirectTo = null,
     ) {
     }
 
@@ -32,6 +33,6 @@ final class SsoButton extends Component
 
     public function url(): string
     {
-        return sso_redirect_url($this->tenant, $this->connection);
+        return sso_redirect_url($this->tenant, $this->connection, $this->redirectTo);
     }
 }

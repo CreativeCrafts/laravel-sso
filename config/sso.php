@@ -45,6 +45,7 @@ return [
         'prefix' => env('SSO_UI_PREFIX', 'admin/sso'),
         'middleware' => ['web', 'auth'],
         'gate' => env('SSO_UI_GATE', 'manageSso'),
+        'allow_missing_gate' => env('SSO_UI_ALLOW_MISSING_GATE', false),
     ],
 
     'tenancy' => [
@@ -106,6 +107,12 @@ return [
         // connection does not declare an explicit override in settings.
         'enabled_by_default' => env('SSO_PROVISIONING_ENABLED', false),
 
+        // Require email_verified=true (OIDC) before provisioning a new user.
+        'require_email_verified' => env('SSO_PROVISIONING_REQUIRE_EMAIL_VERIFIED', true),
+
+        // Allow SAML email attributes to satisfy email verification requirements.
+        'trust_saml_email_attributes' => env('SSO_PROVISIONING_TRUST_SAML_EMAIL', false),
+
         // Connection-level override key stored in sso_connections.settings.
         // Example: ['allow_provisioning' => true]
         'connection_setting_key' => env('SSO_PROVISIONING_CONNECTION_SETTING_KEY', 'allow_provisioning'),
@@ -127,12 +134,23 @@ return [
             'max_attempts' => (int) env('SSO_THROTTLE_ACS_MAX_ATTEMPTS', 30),
             'decay_minutes' => (int) env('SSO_THROTTLE_ACS_DECAY_MINUTES', 1),
         ],
+        'metadata' => [
+            'enabled' => env('SSO_THROTTLE_METADATA_ENABLED', true),
+            'max_attempts' => (int) env('SSO_THROTTLE_METADATA_MAX_ATTEMPTS', 60),
+            'decay_minutes' => (int) env('SSO_THROTTLE_METADATA_DECAY_MINUTES', 1),
+        ],
     ],
 
     'linking' => [
         // Deny by default. Set to true to allow linking package-wide when a
         // connection does not declare an explicit override in settings.
         'enabled_by_default' => env('SSO_LINKING_ENABLED', false),
+
+        // Require email_verified=true (OIDC) before linking by email.
+        'require_email_verified' => env('SSO_LINKING_REQUIRE_EMAIL_VERIFIED', true),
+
+        // Allow SAML email attributes to satisfy email verification requirements.
+        'trust_saml_email_attributes' => env('SSO_LINKING_TRUST_SAML_EMAIL', false),
 
         // Connection-level override key stored in sso_connections.settings.
         // Example: ['allow_identity_linking' => true]
@@ -174,6 +192,7 @@ return [
         'persist_raw' => env('SSO_CLAIMS_PERSIST_RAW', false),
         'persist_groups' => env('SSO_CLAIMS_PERSIST_GROUPS', true),
         'max_group_items' => (int) env('SSO_CLAIMS_MAX_GROUP_ITEMS', 100),
+        'encrypt_persisted' => env('SSO_CLAIMS_ENCRYPT_PERSISTED', true),
     ],
 
     'oidc' => [
@@ -193,11 +212,19 @@ return [
             'max_age_seconds' => env('SSO_OIDC_ID_TOKEN_MAX_AGE_SECONDS'),
             'jwks_cache_ttl_seconds' => env('SSO_OIDC_JWKS_CACHE_TTL', 3600),
             'jwks_http_timeout_seconds' => env('SSO_OIDC_JWKS_HTTP_TIMEOUT', 10),
+            'allowed_algorithms' => array_values(array_filter(array_map(
+                static fn (string $value): string => trim($value),
+                explode(',', (string) env('SSO_OIDC_ALLOWED_ALGORITHMS', 'RS256')),
+            ))),
         ],
     ],
 
     'saml' => [
         'clock_skew_seconds' => (int) env('SSO_SAML_CLOCK_SKEW_SECONDS', 60),
+
+        'persist_raw_saml' => env('SSO_SAML_PERSIST_RAW', false),
+
+        'assertion_replay_cache_seconds' => (int) env('SSO_SAML_ASSERTION_REPLAY_CACHE_SECONDS', 3600),
 
         'require_destination' => env('SSO_SAML_REQUIRE_DESTINATION', true),
         'require_audience' => env('SSO_SAML_REQUIRE_AUDIENCE', true),
@@ -241,6 +268,11 @@ return [
 
             // Binding for ACS endpoint in generated metadata.
             'acs_binding' => env('SSO_SAML_SP_ACS_BINDING', 'urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST'),
+
+            // Optional AuthnRequest signing. Both values must be set to enable signing.
+            'sign_authn_requests' => env('SSO_SAML_SP_SIGN_AUTHN_REQUESTS', false),
+            'signing_private_key_pem' => env('SSO_SAML_SP_SIGNING_PRIVATE_KEY_PEM'),
+            'signing_certificate_pem' => env('SSO_SAML_SP_SIGNING_CERTIFICATE_PEM'),
         ],
     ],
 ];

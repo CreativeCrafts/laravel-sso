@@ -10,6 +10,13 @@ use CreativeCrafts\LaravelSso\Models\IdentityProvider;
 use CreativeCrafts\LaravelSso\Models\Tenant;
 use Illuminate\Contracts\Config\Repository as Config;
 
+/**
+ * Deny-by-default provisioning policy based on connection settings only.
+ *
+ * This policy intentionally ignores IdP claims. Implement a custom
+ * ProvisioningPolicy (see GroupRequiredProvisioningPolicy) when provisioning
+ * must depend on groups, roles, or other claim attributes.
+ */
 final readonly class DefaultProvisioningPolicy implements ProvisioningPolicy
 {
     public function __construct(private Config $config)

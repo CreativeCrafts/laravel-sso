@@ -34,6 +34,7 @@ use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcIdTokenValidator;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Oidc\OidcJwksFetcher;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionConditionsValidator;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionExtractor;
+use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlAssertionReplayGuard;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsMapper;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Contracts\Protocol\Saml\SamlMetadataParser;
@@ -44,6 +45,9 @@ use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\TenantRepository;
+use CreativeCrafts\LaravelSso\Core\ConnectionRouteResolver;
+use CreativeCrafts\LaravelSso\Core\IdentityProviderRouteResolver;
+use CreativeCrafts\LaravelSso\Core\SafeRedirectValidator;
 use CreativeCrafts\LaravelSso\Core\AuditContextSanitizer;
 use CreativeCrafts\LaravelSso\Core\BeginLoginService;
 use CreativeCrafts\LaravelSso\Core\ConfigDriverRegistry;
@@ -62,6 +66,7 @@ use CreativeCrafts\LaravelSso\Core\Tenancy\DefaultTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\HeaderTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\HostTenantResolver;
 use CreativeCrafts\LaravelSso\Core\Tenancy\RouteParamTenantResolver;
+use CreativeCrafts\LaravelSso\Http\SsoExceptionRenderer;
 use CreativeCrafts\LaravelSso\Policies\DefaultIdentityLinkPolicy;
 use CreativeCrafts\LaravelSso\Policies\DefaultProvisioningPolicy;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcDiscovery;
@@ -69,12 +74,14 @@ use CreativeCrafts\LaravelSso\Protocol\Oidc\CachedOidcJwksFetcher;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcEndpointResolver;
 use CreativeCrafts\LaravelSso\Protocol\Oidc\DefaultOidcIdTokenValidator;
+use CreativeCrafts\LaravelSso\Protocol\Saml\CachedSamlAssertionReplayGuard;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlAssertionConditionsValidator;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlAssertionExtractor;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlClaimsMapper;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlClaimsNormalizer;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlMetadataParser;
 use CreativeCrafts\LaravelSso\Protocol\Saml\DefaultSamlSignatureValidator;
+use CreativeCrafts\LaravelSso\Protocol\Saml\SamlAuthnRequestSigner;
 use CreativeCrafts\LaravelSso\Protocol\Saml\SpMetadataGenerator;
 use CreativeCrafts\LaravelSso\Repositories\EloquentAuditLogRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentAuthAttemptRepository;
@@ -82,6 +89,7 @@ use CreativeCrafts\LaravelSso\Repositories\EloquentConnectionRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentExternalIdentityRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentIdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Repositories\EloquentTenantRepository;
+use Illuminate\Contracts\Debug\ExceptionHandler;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Container\Container;
 use Illuminate\Http\Request;
@@ -89,6 +97,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
+use Throwable;
 
 final class LaravelSsoServiceProvider extends PackageServiceProvider
 {
@@ -99,6 +108,7 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             ->hasConfigFile('sso')
             ->hasMigration('create_sso_tables')
             ->hasMigration('add_lifecycle_fields_to_sso_auth_attempts')
+            ->hasMigration('add_public_ulids_to_sso_resources')
             ->hasViews()
             ->hasCommands([
                 SsoInstallCommand::class,
@@ -132,6 +142,8 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         $this->app->singleton(SpMetadataGenerator::class);
         $this->app->singleton(SamlSignatureValidator::class, DefaultSamlSignatureValidator::class);
         $this->app->singleton(SamlAssertionConditionsValidator::class, DefaultSamlAssertionConditionsValidator::class);
+        $this->app->singleton(SamlAssertionReplayGuard::class, CachedSamlAssertionReplayGuard::class);
+        $this->app->singleton(SamlAuthnRequestSigner::class);
         $this->app->singleton(SamlAssertionExtractor::class, DefaultSamlAssertionExtractor::class);
         $this->app->singleton(SamlClaimsMapper::class, DefaultSamlClaimsMapper::class);
         $this->app->singleton(SamlClaimsNormalizer::class, DefaultSamlClaimsNormalizer::class);
@@ -195,6 +207,9 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
             );
         });
 
+        $this->app->singleton(SafeRedirectValidator::class);
+        $this->app->singleton(ConnectionRouteResolver::class);
+        $this->app->singleton(IdentityProviderRouteResolver::class);
         $this->app->singleton(AuditContextSanitizerContract::class, AuditContextSanitizer::class);
         $this->app->singleton(AuthAttemptService::class, DbAuthAttemptService::class);
         $this->app->singleton(DriverRegistry::class, ConfigDriverRegistry::class);
@@ -233,6 +248,21 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
         }
 
         Blade::component('laravel-sso::components.sso-button', 'sso-button');
+
+        $this->registerSsoExceptionRendering();
+    }
+
+    private function registerSsoExceptionRendering(): void
+    {
+        if (!$this->app->bound(ExceptionHandler::class)) {
+            return;
+        }
+
+        $renderer = new SsoExceptionRenderer();
+
+        $this->app->make(ExceptionHandler::class)->renderable(
+            static fn (Throwable $exception, Request $request) => $renderer->render($exception, $request),
+        );
     }
 
     private function registerHelpers(): void
@@ -256,6 +286,10 @@ final class LaravelSsoServiceProvider extends PackageServiceProvider
 
         RateLimiter::for('sso.acs', function (Request $request): Limit {
             return $this->makeThrottleLimit('acs', 'sso.acs', $request);
+        });
+
+        RateLimiter::for('sso.metadata', function (Request $request): Limit {
+            return $this->makeThrottleLimit('metadata', 'sso.metadata', $request);
         });
     }
 

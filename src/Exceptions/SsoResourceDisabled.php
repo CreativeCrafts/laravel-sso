@@ -1,0 +1,15 @@
+<?php
+
+declare(strict_types=1);
+
+namespace CreativeCrafts\LaravelSso\Exceptions;
+
+use RuntimeException;
+
+final class SsoResourceDisabled extends RuntimeException
+{
+    public static function for(string $resource, int|string $key): self
+    {
+        return new self("SSO resource is disabled: {$resource} [{$key}].");
+    }
+}

@@ -34,7 +34,7 @@ final class FakeOidcCallbackDriver implements SsoDriver
             'sub' => 'user-123',
             'email' => 'user@example.test',
             'name' => 'User One',
-            'email_verified' => null,
+            'email_verified' => true,
             'groups' => [],
         ];
 
@@ -42,7 +42,7 @@ final class FakeOidcCallbackDriver implements SsoDriver
             subject: 'user-123',
             email: 'user@example.test',
             displayName: 'User One',
-            emailVerified: null,
+            emailVerified: true,
             groups: [],
             normalized: $normalized,
         );

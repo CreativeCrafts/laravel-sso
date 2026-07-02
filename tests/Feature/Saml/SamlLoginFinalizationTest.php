@@ -30,6 +30,8 @@ function ensureSamlIntegrationUsersTable(): void
 
     config()->set('auth.guards.web', ['driver' => 'session', 'provider' => 'users']);
     config()->set('auth.providers.users', ['driver' => 'eloquent', 'model' => User::class]);
+    config()->set('sso.provisioning.trust_saml_email_attributes', true);
+    config()->set('sso.linking.trust_saml_email_attributes', true);
 }
 
 function createSamlIntegrationFixture(array $trustedCertificates, bool $allowProvisioning = true): array
@@ -74,7 +76,7 @@ it('completes the full SAML login flow and redirects to the intended location', 
     $redirectResponse = $this->get(
         route('sso.redirect', [
             'tenant' => $tenant->ulid,
-            'connection' => (string) $connection->id,
+            'connection' => $connection->ulid,
         ]) . '?redirect_to=' . urlencode($intended),
     );
 
@@ -101,12 +103,12 @@ it('completes the full SAML login flow and redirects to the intended location', 
 
     $acsUrl = route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
@@ -128,7 +130,7 @@ it('completes the full SAML login flow and redirects to the intended location', 
 
     $callbackResponse = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,
@@ -162,7 +164,7 @@ it('fails the full SAML callback flow when the response signature is invalid for
 
     $redirectResponse = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -186,12 +188,12 @@ it('fails the full SAML callback flow when the response signature is invalid for
 
     $acsUrl = route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
@@ -213,7 +215,7 @@ it('fails the full SAML callback flow when the response signature is invalid for
 
     $callbackResponse = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,
@@ -258,7 +260,7 @@ it('fails the full SAML login flow when provisioning is denied by policy', funct
 
     $redirectResponse = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -281,12 +283,12 @@ it('fails the full SAML login flow when provisioning is denied by policy', funct
 
     $acsUrl = route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
@@ -308,13 +310,13 @@ it('fails the full SAML login flow when provisioning is denied by policy', funct
 
     $callbackResponse = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,
     ]);
 
-    $callbackResponse->assertStatus(500);
+    $callbackResponse->assertStatus(403);
 
     expect(auth('web')->check())->toBeFalse();
 

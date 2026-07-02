@@ -28,6 +28,9 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
     config()->set('auth.guards.web', ['driver' => 'session', 'provider' => 'users']);
     config()->set('auth.providers.users', ['driver' => 'eloquent', 'model' => User::class]);
 
+    config()->set('sso.provisioning.trust_saml_email_attributes', true);
+    config()->set('sso.linking.trust_saml_email_attributes', true);
+
     $tenant = Tenant::query()->create([
         'ulid' => (string) Str::ulid(),
         'name' => 'Tenant Replay',
@@ -57,7 +60,7 @@ it('rejects replay of the same saml relay state after the auth attempt is consum
 
     $redirectResponse = $this->get(route('sso.redirect', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]));
 
     $redirectResponse->assertRedirect();
@@ -79,12 +82,12 @@ expect($requestId)->toBeString()->not->toBe('');
 
 $acsUrl = route('sso.saml.acs', [
     'tenant' => $tenant->ulid,
-    'connection' => (string) $connection->id,
+    'connection' => $connection->ulid,
 ], true);
 
     $audience = route('sso.saml.metadata', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ], true);
 
     $xml = SamlTestXmlFactory::signedResponseWithAssertionConditions(
@@ -106,7 +109,7 @@ $acsUrl = route('sso.saml.acs', [
 
     $firstResponse = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,
@@ -116,11 +119,11 @@ $acsUrl = route('sso.saml.acs', [
 
     $secondResponse = $this->post(route('sso.saml.acs', [
         'tenant' => $tenant->ulid,
-        'connection' => (string) $connection->id,
+        'connection' => $connection->ulid,
     ]), [
         'SAMLResponse' => base64_encode($xml),
         'RelayState' => (string) $relayState,
     ]);
 
-    $secondResponse->assertStatus(500);
+    $secondResponse->assertStatus(409);
 });

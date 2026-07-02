@@ -43,6 +43,8 @@ final readonly class DefaultIdentityProviderConfigValidator implements IdentityP
             $validator->errors()->add('config.redirect_uri', 'The config.redirect_uri field is required for oidc.');
         } elseif (filter_var($redirectUri, FILTER_VALIDATE_URL) === false) {
             $validator->errors()->add('config.redirect_uri', 'The config.redirect_uri field must be a valid URL.');
+        } else {
+            $this->validateRedirectUriCallbackPath($validator, $redirectUri);
         }
 
         $hasEndpoints = is_array($config['endpoints'] ?? null);
@@ -197,6 +199,18 @@ final readonly class DefaultIdentityProviderConfigValidator implements IdentityP
 
         if (!$this->urls->isTrusted($url)) {
             $validator->errors()->add($field, "The {$field} field must be a trusted https URL.");
+        }
+    }
+
+    private function validateRedirectUriCallbackPath(Validator $validator, string $redirectUri): void
+    {
+        $path = parse_url($redirectUri, PHP_URL_PATH);
+
+        if (!is_string($path) || !str_ends_with($path, '/callback')) {
+            $validator->errors()->add(
+                'config.redirect_uri',
+                'The config.redirect_uri path should end with /callback to match the package OIDC callback route.',
+            );
         }
     }
 }
