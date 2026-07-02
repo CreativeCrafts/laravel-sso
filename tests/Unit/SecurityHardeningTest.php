@@ -170,7 +170,7 @@ it('keeps expired stale validation locks rejected', function (): void {
 });
 
 it('blocks protocol-relative callback redirects', function (): void {
-    $validator = new \CreativeCrafts\LaravelSso\Core\SafeRedirectValidator();
+    $validator = new CreativeCrafts\LaravelSso\Core\SafeRedirectValidator();
     $request = Request::create('https://app.example.com/sso/callback', 'GET');
 
     expect($validator->resolveStoredRedirect($request, '//evil.example.com/phish'))->toBe('/')

@@ -38,7 +38,7 @@ function mockConnectionRepositoryForAcs(Tenant $tenant, string $routeKey, int $c
                 throw new RuntimeException('Not implemented.');
             }
 
-            public function listForTenant(Tenant $tenant): \Illuminate\Support\Collection
+            public function listForTenant(Tenant $tenant): Illuminate\Support\Collection
             {
                 throw new RuntimeException('Not implemented.');
             }

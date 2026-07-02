@@ -7,6 +7,7 @@ namespace CreativeCrafts\LaravelSso\Http\Requests\Admin;
 use CreativeCrafts\LaravelSso\Http\Requests\Admin\Concerns\AuthorizesSsoAdmin;
 use CreativeCrafts\LaravelSso\Core\TenantRouteKey;
 use Illuminate\Foundation\Http\FormRequest;
+use Closure;
 
 final class ConnectionStoreRequest extends FormRequest
 {
@@ -25,7 +26,7 @@ final class ConnectionStoreRequest extends FormRequest
         return [
           'identity_provider_id' => [
               'required',
-              static function (string $attribute, mixed $value, \Closure $fail): void {
+              static function (string $attribute, mixed $value, Closure $fail): void {
                   if (is_int($value) && $value >= 1) {
                       return;
                   }

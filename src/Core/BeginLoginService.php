@@ -10,7 +10,6 @@ use CreativeCrafts\LaravelSso\Contracts\Core\DriverRegistry;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\ConnectionRepository;
 use CreativeCrafts\LaravelSso\Contracts\Repositories\IdentityProviderRepository;
 use CreativeCrafts\LaravelSso\Core\Dto\DriverStartResult;
-use CreativeCrafts\LaravelSso\Core\SafeRedirectValidator;
 use CreativeCrafts\LaravelSso\Events\AuthAttemptCreated;
 use CreativeCrafts\LaravelSso\Events\BeginLoginRedirectGenerated;
 use CreativeCrafts\LaravelSso\Events\BeginLoginRequested;
