@@ -4,7 +4,17 @@ All notable changes to `creativecrafts/laravel-sso` are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.3] - 2026-07-02
+## [v1.0.3](https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.3/compare/v1.0.3...v1.0.3) - 2026-07-02
+
+Patch release closing the last tenant ULID case-sensitivity gap in the CLI.
+
+### Fixed
+
+- `sso:make-tenant` performs a case-insensitive ULID existence check before insert, matching admin API validation.
+
+Full changelog: [CHANGELOG.md](https://github.com/CreativeCrafts/laravel-sso/blob/main/CHANGELOG.md)
+
+## [1.0.3](https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.3) - 2026-07-02
 
 ### Fixed
 
@@ -78,8 +88,3 @@ First stable release.
 - Operator, Deployment, Security, Troubleshooting, Error Catalog guides
 - Upgrade Guide, Auth Attempt Lifecycle, Architecture Audit
 - Maintainer Release Checklist, Contributor Matrix Testing
-
-[1.0.3]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.3
-[1.0.2]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.2
-[1.0.1]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.1
-[1.0.0]: https://github.com/creativecrafts/laravel-sso/releases/tag/v1.0.0
