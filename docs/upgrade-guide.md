@@ -76,6 +76,15 @@ Numeric connection IDs remain supported for backward compatibility.
 
 External identity `claims` are encrypted at rest by default (`SSO_CLAIMS_ENCRYPT_PERSISTED=true`).
 
+The `claims` column uses a text-compatible type because encrypted ciphertext is not valid JSON. MySQL rejects encrypted envelopes into native `json` columns with `SQLSTATE 22032` / error 3140.
+
+New installations receive `longText` for `claims` from the base `create_sso_tables` migration. Existing installations that already published an older migration should publish and run package migrations:
+
+```bash
+php artisan vendor:publish --tag="sso-migrations"
+php artisan migrate
+```
+
 Existing plaintext claim rows are read transparently and re-encrypted on the next update. To bulk re-encrypt, touch external identity records in a maintenance task or temporarily disable encryption only during migration troubleshooting:
 
 ```env

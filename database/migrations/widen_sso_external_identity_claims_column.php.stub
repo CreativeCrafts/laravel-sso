@@ -1,0 +1,37 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (!Schema::hasTable('sso_external_identities') || !Schema::hasColumn('sso_external_identities', 'claims')) {
+            return;
+        }
+
+        $connection = DB::connection();
+        $driver = $connection->getDriverName();
+        $table = $connection->getQueryGrammar()->wrapTable('sso_external_identities');
+        $column = $connection->getQueryGrammar()->wrap('claims');
+
+        match ($driver) {
+            'mysql', 'mariadb' => DB::statement("ALTER TABLE {$table} MODIFY {$column} LONGTEXT NULL"),
+            'pgsql' => DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} TYPE TEXT USING {$column}::text"),
+            'sqlsrv' => DB::statement("ALTER TABLE {$table} ALTER COLUMN {$column} NVARCHAR(MAX) NULL"),
+            default => null,
+        };
+    }
+
+    public function down(): void
+    {
+        // Intentionally no-op.
+        //
+        // Reverting this column back to JSON would reintroduce the MySQL failure
+        // because encrypted ciphertext is not valid JSON.
+    }
+};
