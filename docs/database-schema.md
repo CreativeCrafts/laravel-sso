@@ -100,7 +100,7 @@ Maps IdP subjects to local authenticatable models.
 | `display_name` | string, nullable | Denormalized display name |
 | `authenticatable_type` | string | Eloquent morph type |
 | `authenticatable_id` | string | Eloquent morph id |
-| `claims` | json, nullable | Encrypted minimized claims by default |
+| `claims` | longText, nullable | Encrypted minimized claims by default |
 | `created_at`, `updated_at` | timestamps | |
 
 Unique: `(tenant_id, identity_provider_id, provider_subject)`.
